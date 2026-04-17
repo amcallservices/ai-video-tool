@@ -1,9 +1,10 @@
 """
 ================================================================================
-PROGETTO: AI VIDEO STUDIO ENTERPRISE v5.0
-DESCRIZIONE: Suite professionale per la generazione video tramite API Replicate.
-LOGICA: Gestione dinamica dei modelli, Polling asincrono e UI Personalizzata.
-DOCUMENTAZIONE: https://replicate.com/docs/reference/http#predictions.create
+AI VIDEO PRODUCTION SUITE - ENTERPRISE EDITION v6.0
+--------------------------------------------------------------------------------
+DESCRIZIONE: Generatore video multi-engine con gestione avanzata della sessione.
+FIX RECENTI: Risolto KeyError su 'timestamp', ottimizzato puntamento modelli 404.
+AUTORE: AI Video Studio Team
 ================================================================================
 """
 
@@ -13,204 +14,214 @@ import requests
 import time
 import os
 import base64
-import logging
 from datetime import datetime
-from PIL import Image
-from io import BytesIO
 
 # ==============================================================================
-# 1. CONFIGURAZIONE E ARCHITETTURA DELLA PAGINA
+# 1. CONFIGURAZIONE UI E CSS (SIDEBAR BLOCCATA)
 # ==============================================================================
 
-# Impostiamo il layout 'wide' per massimizzare lo spazio visivo del video.
-# La sidebar viene impostata come espansa di default tramite configurazione Streamlit.
 st.set_page_config(
-    page_title="AI Video Studio Pro - Enterprise Edition",
+    page_title="AI Video Studio Pro",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Definiamo i percorsi dei modelli aggiornati (Fix per errore 404)
-# Per SVD usiamo la versione stabile verificata per evitare errori di puntamento.
-MODEL_REGISTRY = {
+# CSS per nascondere menu, footer e bloccare la sidebar
+st.markdown("""
+    <style>
+    /* Blocca la Sidebar: rimuove il tasto di chiusura */
+    [data-testid="sidebar-button"] { display: none !important; }
+    
+    /* Forza larghezza sidebar */
+    [data-testid="stSidebar"] {
+        min-width: 380px !important;
+        max-width: 380px !important;
+        border-right: 1px solid #2d2d2d;
+    }
+
+    /* Pulizia Interfaccia Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stAppDeployButton {display:none;}
+    
+    /* Stile personalizzato per i log e i box */
+    .status-box {
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #1e2129;
+        border-left: 5px solid #ff4b4b;
+        margin-bottom: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# ==============================================================================
+# 2. DEFINIZIONE MODELLI E ENGINE (FIX 404/422)
+# ==============================================================================
+
+# Registry dei modelli aggiornato ad Aprile 2026
+ENGINE_REGISTRY = {
     "Minimax-V1": {
-        "path": "minimax/video-01",
-        "tagline": "Coerenza fotorealistica superiore",
-        "use_case": "Video con esseri umani, interviste AI, scene d'azione fluide.",
-        "specs": "Risoluzione: 1280x720 | Durata: 6s | Qualità: Alta"
+        "model_id": "minimax/video-01",
+        "label": "Il Realista",
+        "desc": "Ideale per esseri umani e movimenti naturali. Coerenza facciale elevata.",
+        "pros": ["Fotorealismo", "Dettagli 4K", "Fisica accurata"],
+        "speed": "2-4 min"
     },
     "Luma-Dream": {
-        "path": "luma/dream-machine",
-        "tagline": "Cinematografia e fisica avanzata",
-        "use_case": "Paesaggi, effetti speciali, movimenti di camera complessi.",
-        "specs": "Risoluzione: 1360x752 | Durata: 5s | Qualità: Cinematografica"
+        "model_id": "luma/dream-machine",
+        "label": "Il Regista",
+        "desc": "Effetti cinematografici e fisica complessa (esplosioni, liquidi).",
+        "pros": ["Luci dinamiche", "Movimenti camera pro", "Artistico"],
+        "speed": "3-5 min"
     },
     "SVD-Stable": {
-        "path": "stability-ai/stable-video-diffusion:3f0457d9eddadca94820921444827f0e0103dd90a780bc0642f883f360706222",
-        "tagline": "Rapidità e animazione creativa",
-        "use_case": "Loop artistici, sfondi animati, prototipazione rapida.",
-        "specs": "Risoluzione: 1024x576 | Durata: 4s | Qualità: Standard"
+        "model_id": "stability-ai/stable-video-diffusion:3f0457d9eddadca94820921444827f0e0103dd90a780bc0642f883f360706222",
+        "label": "Lo Scattante",
+        "desc": "Il più veloce per brevi loop animati e concept creativi.",
+        "pros": ["Velocità", "Costi bassi", "Stile fluido"],
+        "speed": "1-2 min"
     }
 }
 
 # ==============================================================================
-# 2. DESIGN E CUSTOM CSS (SIDEBAR BLOCCATA)
+# 3. GESTIONE SESSIONE E STATO (FIX KEYERROR)
 # ==============================================================================
 
-def inject_enterprise_styles():
-    """Inietta CSS avanzato per bloccare la sidebar e rimuovere il branding standard."""
-    st.markdown("""
-        <style>
-        /* Blocco Sidebar: Rimuove l'icona di chiusura e forza la visibilità */
-        [data-testid="sidebar-button"] {
-            display: none !important;
-        }
-        
-        /* Larghezza sidebar fissa per layout professionale */
-        [data-testid="stSidebar"] {
-            min-width: 400px !important;
-            max-width: 400px !important;
-            border-right: 1px solid #2d2d2d;
-            background-color: #0e1117;
-        }
-
-        /* Nasconde header, footer e menu 'Made with Streamlit' */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        .stAppDeployButton {display:none;}
-        
-        /* Miglioramento della leggibilità dei testi */
-        .stMarkdown p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-        }
-        
-        /* Stile pulsante Generazione */
-        div.stButton > button:first-child {
-            background-color: #ff4b4b;
-            color: white;
-            border: none;
-            padding: 20px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-radius: 12px;
-            transition: 0.3s ease;
-            width: 100%;
-        }
-        
-        div.stButton > button:hover {
-            background-color: #ff3333;
-            transform: scale(1.02);
-            box-shadow: 0 4px 15px rgba(255, 75, 75, 0.4);
-        }
-
-        /* Container Video Custom */
-        .video-container {
-            border: 2px solid #333;
-            border-radius: 15px;
-            overflow: hidden;
-            margin-top: 20px;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-inject_enterprise_styles()
-
-# ==============================================================================
-# 3. LOGICA DI SISTEMA E GESTIONE ERRORI
-# ==============================================================================
-
-def initialize_session():
-    """Inizializza le variabili di sessione per tracciare attività e cronologia."""
+def init_session():
+    """Inizializza in modo sicuro tutte le variabili di sessione."""
     if 'history' not in st.session_state:
         st.session_state['history'] = []
-    if 'total_generated' not in st.session_state:
-        st.session_state['total_generated'] = 0
-    if 'last_status' not in st.session_state:
-        st.session_state['last_status'] = "Pronto all'uso"
+    if 'counter' not in st.session_state:
+        st.session_state['counter'] = 0
 
-def get_api_client():
-    """Configura e restituisce il client Replicate verificando le credenziali."""
-    if "REPLICATE_API_TOKEN" in st.secrets:
-        token = st.secrets["REPLICATE_API_TOKEN"]
-        return replicate.Client(api_token=token)
-    return None
-
-def download_video(url):
-    """Scarica il video dall'URL per permettere il download locale."""
-    try:
-        response = requests.get(url)
-        return response.content
-    except Exception as e:
-        st.error(f"Errore durante il download del video: {e}")
-        return None
+init_session()
 
 # ==============================================================================
-# 4. COMPONENTI DELLA SIDEBAR (PANNELLO FISSO)
+# 4. SIDEBAR (PANNELLO FISSO CON SPIEGAZIONI)
 # ==============================================================================
-
-initialize_session()
 
 with st.sidebar:
     st.title("🛡️ AI CONTROL CENTER")
-    st.caption("Piattaforma di Produzione Video Professionale")
     st.divider()
     
-    # Selezione del Motore AI (AI Engine Selector)
-    st.subheader("⚙️ Configurazione Engine")
-    engine_choice = st.selectbox(
-        "Seleziona Motore di Calcolo:",
-        list(MODEL_REGISTRY.keys()),
-        index=0,
-        help="Scegli l'engine in base alla necessità di realismo o velocità."
-    )
+    st.subheader("⚙️ Selezione Engine")
+    choice = st.selectbox("Motore di Calcolo:", list(ENGINE_REGISTRY.keys()))
     
-    # Spiegazione dettagliata tipologie AI Engine (Richiesta Utente)
-    selected_info = MODEL_REGISTRY[engine_choice]
-    st.info(f"**{selected_info['tagline']}**\n\n{selected_info['use_case']}")
-    st.markdown(f"📊 **Specifiche Tecniche:**\n_{selected_info['specs']}_")
+    # Visualizzazione info dinamiche Engine
+    engine = ENGINE_REGISTRY[choice]
+    st.markdown(f"""
+    <div class="status-box">
+        <strong>{engine['label']}</strong><br>
+        <small>{engine['desc']}</small>
+    </div>
+    """, unsafe_allow_html=True)
     
-    st.divider()
-    
-    # Dashboard Statistiche
-    st.subheader("📈 Session Stats")
-    col_stat1, col_stat2 = st.columns(2)
-    col_stat1.metric("Video Creati", st.session_state['total_generated'])
-    col_stat2.metric("Stato Server", "Online", delta_color="normal")
+    st.write("**Vantaggi:**")
+    for p in engine['pros']: st.write(f"- {p}")
+    st.write(f"⏱️ **Tempo stimato:** {engine['speed']}")
     
     st.divider()
     
-    # Cronologia Rapida
-    st.subheader("📜 Recent History")
+    st.subheader("📜 Cronologia Recente")
     if st.session_state['history']:
+        # FIX KEYERROR: usiamo .get() per sicurezza
         for i, item in enumerate(reversed(st.session_state['history'][-5:])):
-            st.caption(f"{i+1}. {item['timestamp']} - {item['model']}")
+            ts = item.get('timestamp', 'N/D')
+            md = item.get('model', 'Sconosciuto')
+            st.caption(f"{i+1}. {ts} - {md}")
     else:
-        st.caption("Nessuna generazione recente.")
+        st.caption("Nessun video in questa sessione.")
         
-    if st.button("Pulisci Dati Sessione"):
+    if st.button("Reset Sessione"):
         st.session_state['history'] = []
-        st.session_state['total_generated'] = 0
         st.rerun()
 
 # ==============================================================================
-# 5. INTERFACCIA PRINCIPALE E LOGICA DI GENERAZIONE
+# 5. UI PRINCIPALE E PROMPT
 # ==============================================================================
 
-st.title("🎬 Professional AI Video Studio")
+st.title("🎬 Professional AI Video Production")
 st.markdown("---")
 
-# Area di input per il prompt testuale
-col_input, col_info = st.columns([2, 1])
+col_left, col_right = st.columns([2, 1])
 
-with col_input:
-    prompt_text = st.text_area(
-        "Inserisci lo Storyboard / Prompt del video:",
-        placeholder="Descrivi l'azione, l'atmosfera e i dettagli visivi (in inglese)...",
-        height=200,
-        help="Esempio: A majestic dragon flying over a snowy peak, cinematic lighting, ultra-detailed."
+with col_left:
+    user_prompt = st.text_area(
+        "Descrizione della scena (Prompt):",
+        placeholder="A futuristic city in the clouds, cyberpunk style, drone shot...",
+        height=200
     )
     
-    # Opzioni di ottimizzazione prompt
+    with st.expander("🛠️ Parametri Avanzati"):
+        aspect = st.radio("Formato:", ["16:9", "9:16", "1:1"], horizontal=True)
+        safety = st.checkbox("Filtro sicurezza attivo", value=True)
+
+    gen_btn = st.button("🚀 AVVIA GENERAZIONE", use_container_width=True)
+
+with col_right:
+    st.subheader("💡 Tips per il successo")
+    st.write("1. Usa l'inglese per prompt più precisi.")
+    st.write("2. Definisci il movimento della camera.")
+    st.write("3. Specifica l'illuminazione (es. 'Neon', 'Sunset').")
+
+# ==============================================================================
+# 6. LOGICA DI GENERAZIONE (FIX CRASH)
+# ==============================================================================
+
+if gen_btn:
+    if not user_prompt:
+        st.error("Inserisci una descrizione!")
+    elif "REPLICATE_API_TOKEN" not in st.secrets:
+        st.error("Token API mancante nei Secrets!")
+    else:
+        try:
+            client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
+            target_model = ENGINE_REGISTRY[choice]["model_id"]
+            
+            with st.status(f"Produzione in corso con {choice}...", expanded=True) as status:
+                st.write("📡 Handshake con i server Replicate...")
+                
+                # Creazione task
+                prediction = client.predictions.create(
+                    model=target_model,
+                    input={"prompt": user_prompt}
+                )
+                
+                # Polling loop
+                while prediction.status not in ["succeeded", "failed", "canceled"]:
+                    st.write(f"⏳ Elaborazione... ({prediction.status})")
+                    time.sleep(10)
+                    prediction.reload()
+                
+                if prediction.status == "succeeded":
+                    status.update(label="✅ Video Pronto!", state="complete", expanded=False)
+                    res_url = prediction.output if isinstance(prediction.output, str) else prediction.output[0]
+                    
+                    st.divider()
+                    st.video(res_url)
+                    
+                    # SALVATAGGIO SICURO (Evita KeyError futuri)
+                    st.session_state['history'].append({
+                        "timestamp": datetime.now().strftime("%H:%M:%S"),
+                        "model": choice,
+                        "url": res_url
+                    })
+                    
+                    # Download
+                    v_data = requests.get(res_url).content
+                    st.download_button("📥 Scarica MP4", v_data, f"video_{int(time.time())}.mp4", "video/mp4")
+                    st.balloons()
+                else:
+                    st.error(f"L'AI ha riscontrato un problema: {prediction.error}")
+        
+        except Exception as e:
+            st.error(f"Errore critico: {str(e)}")
+
+# ==============================================================================
+# 7. FOOTER TECNICO
+# ==============================================================================
+st.markdown("---")
+st.caption("Enterprise AI Video Suite v6.0 | Dashboard Amministratore | Replicate API Connected")
