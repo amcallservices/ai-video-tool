@@ -1,11 +1,10 @@
 """
 ================================================================================
-AI VIDEO PRODUCTION SUITE - SVD-BRIDGE v38.0
+AI VIDEO PRODUCTION SUITE - STABLE-PATH v39.0
 --------------------------------------------------------------------------------
-SISTEMA: SDXL (Generazione Immagine) + SVD (Animazione) + MoviePy (Stitching)
-LOGICA: Risolve l'errore 422 creando l'immagine necessaria prima del video.
-DURATA: 3 clip da 5s unite per 15 secondi totali.
-COSTO: Estremamente economico.
+SOLUZIONE: Usa endpoint canonici per evitare ReplicateError (404/422).
+FLUSSO: SDXL (Immagine) -> SVD (Video 3x5s) -> MoviePy (Stitching).
+COSTO: Minimo garantito.
 ================================================================================
 """
 
@@ -17,8 +16,8 @@ import os
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from deep_translator import GoogleTranslator
 
-# --- 1. CONFIGURAZIONE UI ---
-st.set_page_config(page_title="SVD Bridge Studio", page_icon="🎨", layout="wide")
+# --- 1. DESIGN E CONFIGURAZIONE ---
+st.set_page_config(page_title="SVD Stable Studio", page_icon="🎬", layout="wide")
 
 st.markdown("""
     <style>
@@ -33,14 +32,14 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. LOGICA DI MONTAGGIO ---
-def stitch_svd_master(urls):
+# --- 2. LOGICA DI MONTAGGIO (MOVIEPY) ---
+def stitch_master(urls):
     temp_files = []
     clips = []
-    output_name = "svd_master_final.mp4"
+    output_name = "final_master_svd.mp4"
     try:
         for i, url in enumerate(urls):
-            fname = f"svd_part_{i}.mp4"
+            fname = f"part_{i}.mp4"
             with open(fname, "wb") as f:
                 f.write(requests.get(url).content)
             temp_files.append(fname)
@@ -56,59 +55,61 @@ def stitch_svd_master(urls):
 
 # --- 3. SESSION STATE ---
 if 'eng_p' not in st.session_state: st.session_state['eng_p'] = ""
-if 'base_image' not in st.session_state: st.session_state['base_image'] = None
-if 'final_v' not in st.session_state: st.session_state['final_v'] = None
+if 'base_img' not in st.session_state: st.session_state['base_img'] = None
+if 'master_v' not in st.session_state: st.session_state['master_v'] = None
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
-    st.title("🎨 SVD BRIDGE")
-    st.caption("Text-to-Image-to-Video")
+    st.title("🎨 STABLE BRIDGE")
     st.divider()
-    
     it_sub = st.text_input("Soggetto (IT):")
     it_act = st.text_area("Azione (IT):")
     
-    if st.button("🪄 TRADUCI E PREPARA"):
+    if st.button("🪄 TRADUCI SCRIPT"):
         if it_sub and it_act:
             ts = GoogleTranslator(source='it', target='en').translate(it_sub)
             ta = GoogleTranslator(source='it', target='en').translate(it_act)
-            st.session_state['eng_p'] = f"{ts}, {ta}, cinematic lighting, high resolution, detailed."
+            st.session_state['eng_p'] = f"{ts}, {ta}, cinematic, highly detailed, 8k."
             st.success("Prompt pronto!")
 
 # --- 5. AREA PRODUZIONE ---
-st.title("🚀 Workstation SVD Economy")
-st.markdown("---")
-
+st.title("🚀 Workstation SVD Low-Cost")
 col_l, col_r = st.columns([2, 1])
 
 with col_l:
-    prompt_ready = st.text_area("Script:", value=st.session_state['eng_p'], height=150)
+    prompt_ready = st.text_area("Script Tecnico:", value=st.session_state['eng_p'], height=150)
     
-    if st.button("🔥 AVVIA PRODUZIONE (SDXL + SVD)"):
+    if st.button("🔥 GENERA VIDEO (15s)"):
         if not prompt_ready:
             st.error("Traduci lo script!")
+        elif "REPLICATE_API_TOKEN" not in st.secrets:
+            st.error("Token API mancante!")
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
             
-            # FASE 1: Generazione Immagine Base con SDXL (Necessaria per SVD)
-            with st.status("🖼️ Fase 1: Generazione Immagine...", expanded=True):
-                image_output = client.run(
-                    "stability-ai/sdxl:7762fd39730083977a67bb8e6993d51f8d57167618a9a44f7388b49da873046d",
-                    input={"prompt": prompt_ready}
-                )
-                st.session_state['base_image'] = image_output[0]
-                st.image(st.session_state['base_image'], caption="Immagine Base Generata", width=300)
+            # FASE 1: SDXL (Generazione Immagine) usando il percorso canonico senza ID versione
+            with st.status("🖼️ Generazione Immagine Base...", expanded=True):
+                try:
+                    # Usiamo 'stability-ai/sdxl' come alias stabile
+                    output_img = client.run(
+                        "stability-ai/sdxl",
+                        input={"prompt": prompt_ready}
+                    )
+                    st.session_state['base_img'] = output_img[0]
+                    st.image(st.session_state['base_img'], width=300)
+                except Exception as e:
+                    st.error(f"Errore SDXL: {e}")
+                    st.stop()
 
-            # FASE 2: Animazione con SVD (3 Clip da 5s)
+            # FASE 2: SVD (Animazione 3x5s)
             urls = []
             bar = st.progress(0)
             for i in range(3):
-                with st.status(f"🎬 Fase 2: Animazione Parte {i+1}/3...", expanded=True) as status:
+                with st.status(f"🎬 Animazione Parte {i+1}/3...", expanded=True) as status:
                     prediction = client.predictions.create(
                         model="stability-ai/svd",
                         input={
-                            "input_path": st.session_state['base_image'],
-                            "video_length": "25_frames_with_context",
+                            "input_path": st.session_state['base_img'],
                             "motion_bucket_id": 127
                         }
                     )
@@ -121,20 +122,17 @@ with col_l:
                         status.update(label=f"✅ Clip {i+1} OK", state="complete")
                 bar.progress((i + 1) / 3)
             
-            # FASE 3: Stitching
+            # FASE 3: MONTAGGIO
             if len(urls) == 3:
-                with st.spinner("📦 Fase 3: Montaggio Finale..."):
-                    master = stitch_svd_master(urls)
-                    st.session_state['final_v'] = master
+                with st.spinner("📦 Stitching Finale..."):
+                    st.session_state['master_v'] = stitch_master(urls)
                     st.balloons()
 
 with col_r:
-    st.subheader("🎞️ Risultato Finale")
-    if st.session_state['final_v']:
-        st.video(st.session_state['final_v'])
-        with open(st.session_state['final_v'], "rb") as f:
-            st.download_button("📥 Scarica Video 15s", f, "svd_master.mp4")
-    else:
-        st.info("In attesa di produzione.")
+    st.subheader("🎞️ Risultato Master")
+    if st.session_state['master_v']:
+        st.video(st.session_state['master_v'])
+        with open(st.session_state['master_v'], "rb") as f:
+            st.download_button("📥 Scarica Master 15s", f, "svd_master.mp4")
 
-st.caption("v38.0 - SVD Bridge | SDXL Integrated | MoviePy Stitching")
+st.caption("v39.0 - Stable-Path | SDXL + SVD + MoviePy")
