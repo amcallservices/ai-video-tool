@@ -1,60 +1,67 @@
 import streamlit as st
 import replicate
-import os
 import requests
+import time
 
 # 1. Configurazione Pagina
 st.set_page_config(page_title="AI Video Studio", page_icon="🎬")
 
-# 2. Setup Client
+# 2. Setup Client Protetto
 if "REPLICATE_API_TOKEN" in st.secrets:
-    # Usiamo il token dai segreti di Streamlit
     client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
 else:
-    st.error("Token non trovato! Inseriscilo nei Secrets di Streamlit Cloud.")
+    st.error("Token non trovato nei Secrets di Streamlit!")
     st.stop()
 
-st.title("🎬 Generatore Video AI Pro")
-st.write("Crea video cinematografici con Luma Dream Machine.")
+st.title("🎬 AI Video Studio Pro")
 
-# 3. Form di Input
 with st.form("video_form"):
-    prompt = st.text_area("Descrizione video:", placeholder="A futuristic car driving through a neon city, cyberpunk style, 4k...")
-    aspect_ratio = st.selectbox("Formato:", ["16:9", "9:16", "1:1"])
+    prompt = st.text_area("Cosa vuoi creare?", placeholder="Un'auto futuristica sfreccia in una città neon...")
     submit = st.form_submit_button("Genera Video")
 
 if submit:
     if not prompt:
         st.warning("Inserisci una descrizione!")
     else:
+        # Creiamo un contenitore vuoto per i messaggi di stato
+        status_container = st.empty()
+        
         try:
-            with st.spinner("🚀 Luma sta creando il tuo video... (circa 2-3 minuti)"):
-                
-                # Utilizziamo Luma Dream Machine - Uno dei più stabili su Replicate
-                output = client.run(
-                    "luma/dream-machine",
-                    input={
-                        "prompt": prompt,
-                        "aspect_ratio": aspect_ratio
-                    }
-                )
+            status_container.info("⏳ Richiesta inviata ai server... (Fase 1/3)")
+            
+            # Tentativo di generazione con Luma Dream Machine
+            # Usiamo la versione con l'ID più recente e stabile per evitare ambiguità
+            prediction = client.predictions.create(
+                version="a719512991a10688019446d3e75e95a9b718991f8936631b09b555818ca91e9f", # Luma Dream Machine v1
+                input={"prompt": prompt}
+            )
 
-                # Luma restituisce l'URL del video
-                video_url = output
-                
-                st.success("✅ Video Generato!")
+            # Fase di monitoraggio (Poling)
+            # Invece di client.run, usiamo un loop per evitare timeout del server
+            while prediction.status not in ["succeeded", "failed", "canceled"]:
+                status_container.info(f"🎬 L'AI sta lavorando... Stato attuale: {prediction.status}")
+                time.sleep(5) # Attendi 5 secondi prima di ricontrollare
+                prediction.reload() # Aggiorna i dati della predizione
+
+            if prediction.status == "succeeded":
+                video_url = prediction.output
+                status_container.success("✅ Video generato con successo!")
                 st.video(video_url)
                 
-                # Download
+                # Scaricamento
                 video_bytes = requests.get(video_url).content
                 st.download_button("💾 Scarica Video", data=video_bytes, file_name="video_ai.mp4")
+            else:
+                st.error(f"La generazione è fallita con stato: {prediction.status}")
 
         except Exception as e:
-            st.error(f"Errore: {e}")
-            if "402" in str(e) or "free" in str(e).lower():
-                st.info("💡 Sembra che i crediti gratuiti siano esauriti. I modelli video richiedono un saldo positivo su Replicate.")
-            elif "422" in str(e):
-                st.info("💡 Vai su https://replicate.com/luma/dream-machine e clicca 'Run' una volta per accettare i termini del modello.")
+            if "500" in str(e):
+                st.error("🚨 Errore 500: I server di Replicate sono sovraccarichi.")
+                st.info("Riprova tra 30 secondi: è un problema temporaneo della loro infrastruttura.")
+            elif "402" in str(e):
+                st.error("💸 Credito esaurito su Replicate! Controlla il tuo piano di fatturazione.")
+            else:
+                st.error(f"Errore imprevisto: {e}")
 
 st.markdown("---")
-st.caption("Creato con Luma + Replicate + Streamlit")
+st.caption("Se l'errore 500 persiste, prova a cambiare leggermente il prompt o attendi qualche minuto.")
