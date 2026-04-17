@@ -1,0 +1,68 @@
+import streamlit as st
+import replicate
+import os
+import requests
+
+# Configurazione della pagina
+st.set_page_config(page_title="AI Video Generator", page_icon="🎥")
+
+st.title("🎥 Generatore Video AI per Clienti")
+st.subheader("Trasforma le tue idee in clip cinematografiche")
+
+# --- Configurazione API ---
+# In produzione, useremo st.secrets. In locale, puoi usare una stringa o variabile d'ambiente.
+replicate_api_token = st.sidebar.text_input("Inserisci Replicate API Token", type="password")
+os.environ["REPLICATE_API_TOKEN"] = replicate_api_token
+
+# --- Interfaccia Utente ---
+with st.form("video_form"):
+    prompt = st.text_area(
+        "Descrivi il video che vuoi generare:",
+        placeholder="Esempio: Un astronauta che cammina in una foresta aliena bioluminescente, 4k, stile cinematografico..."
+    )
+    
+    # Parametri aggiuntivi opzionali
+    durata = st.select_slider("Qualità/Durata (Frames)", options=[41, 81, 161], value=81)
+    
+    submit_button = st.form_submit_button("Genera Video")
+
+# --- Logica di Generazione ---
+if submit_button:
+    if not replicate_api_token:
+        st.error("Per favore, inserisci il tuo API Token nella barra laterale!")
+    elif not prompt:
+        st.warning("Inserisci una descrizione prima di continuare.")
+    else:
+        try:
+            with st.spinner("L'intelligenza artificiale sta creando il tuo video... Potrebbe volerci un minuto."):
+                # Chiamata a Replicate (Modello CogVideoX-5b)
+                output = replicate.run(
+                    "lucataco/cogvideox-5b:096504958319f35315570072b0c3603d1c4728511d739c3629471f28b2488737",
+                    input={
+                        "prompt": prompt,
+                        "num_frames": durata,
+                        "fps": 8,
+                        "guidance_scale": 6
+                    }
+                )
+                
+                video_url = output if isinstance(output, str) else output[0]
+                
+                # Visualizzazione Video
+                st.success("Video generato con successo!")
+                st.video(video_url)
+                
+                # Bottone per il download
+                video_data = requests.get(video_url).content
+                st.download_button(
+                    label="Scarica Video MP4",
+                    data=video_data,
+                    file_name="video_ai.mp4",
+                    mime="video/mp4"
+                )
+                
+        except Exception as e:
+            st.error(f"Si è verificato un errore durante la generazione: {e}")
+
+# --- Footer ---
+st.info("Nota: Ogni generazione consuma crediti sul tuo account Replicate.")
