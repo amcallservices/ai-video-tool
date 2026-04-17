@@ -3,228 +3,138 @@ import replicate
 import requests
 import time
 import os
-import uuid
+from PIL import Image
+from io import BytesIO
 from deep_translator import GoogleTranslator
 
 # ==============================================================================
-# 1. ARCHITETTURA UI & DESIGN CUSTOM
+# 1. DESIGN & LAYOUT (EBOOK EDITION)
 # ==============================================================================
-st.set_page_config(
-    page_title="AI Creative Studio v65",
-    page_icon="🎬",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Ebook Cover Designer", page_icon="📚", layout="wide")
 
-# Iniezione CSS per design Dark Premium e Sidebar bloccata
 st.markdown("""
     <style>
-    /* Reset e Colori Base */
-    .main { background-color: #0d1117; color: #c9d1d9; }
-    [data-testid="stSidebar"] {
-        min-width: 380px !important;
-        background-color: #161b22;
-        border-right: 1px solid #30363d;
+    .main { background-color: #0f172a; color: #f1f5f9; }
+    [data-testid="stSidebar"] { background-color: #1e293b; border-right: 1px solid #334155; }
+    #MainMenu, footer, header { visibility: hidden; }
+    
+    /* Input Styling */
+    .stTextInput input, .stTextArea textarea, .stSelectbox div {
+        background-color: #0f172a !important;
+        color: #38bdf8 !important;
+        border: 1px solid #334155 !important;
     }
-    
-    /* Rimozione elementi standard Streamlit */
-    #MainMenu, footer, header, [data-testid="sidebar-button"] { visibility: hidden; }
-    
-    /* Styling Input e Textarea */
-    .stTextArea textarea, .stTextInput input {
-        background-color: #0d1117 !important;
-        color: #58a6ff !important;
-        border: 1px solid #30363d !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Card Info veritiere */
-    .info-card {
-        background: #1c2128;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #444c56;
-        margin-bottom: 20px;
-    }
-    
-    /* Pulsante Master */
+
+    /* Pulsante Gold */
     div.stButton > button:first-child {
-        background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
-        color: white;
-        font-size: 1.2rem;
-        font-weight: 700;
-        height: 4rem;
-        border-radius: 10px;
-        width: 100%;
-        border: none;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        transition: 0.3s;
-    }
-    div.stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(46, 160, 67, 0.4);
+        background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+        color: #000; font-size: 1.2rem; font-weight: 800; height: 4rem;
+        border-radius: 12px; width: 100%; border: none; box-shadow: 0 4px 20px rgba(217, 119, 6, 0.4);
     }
     
-    /* Status Badge */
-    .status-badge {
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: bold;
+    /* Preview Ebook */
+    .ebook-preview {
+        border: 10px solid #1e293b;
+        border-radius: 5px;
+        box-shadow: 20px 20px 60px #080c14, -20px -20px 60px #16223e;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. LOGICA DI SUPPORTO E UTILITY
+# 2. SIDEBAR: PARAMETRI EDITORIALI
 # ==============================================================================
-def check_replicate_token():
-    """Verifica la presenza del token nei secrets."""
-    if "REPLICATE_API_TOKEN" not in st.secrets:
-        st.error("❌ Errore: REPLICATE_API_TOKEN non configurato nei Secrets!")
-        return False
-    return True
-
-def translate_prompt(soggetto, azione):
-    """Traduce e ottimizza il prompt per i modelli AI."""
-    try:
-        translator = GoogleTranslator(source='it', target='en')
-        text_to_translate = f"{soggetto}, {azione}"
-        translated = translator.translate(text_to_translate)
-        # Aggiunta di tag tecnici per migliorare la resa cinematografica
-        optimized = f"Cinematic shot, {translated}, ultra-detailed, 8k resolution, professional lighting, masterpiece."
-        return optimized
-    except Exception as e:
-        st.error(f"Errore traduzione: {e}")
-        return None
-
-# ==============================================================================
-# 3. SIDEBAR: CONTROLLI E DASHBOARD INFO
-# ==============================================================================
-if 'final_prompt' not in st.session_state: st.session_state['final_prompt'] = ""
-if 'output_media' not in st.session_state: st.session_state['output_media'] = None
-
 with st.sidebar:
-    st.title("💎 STUDIO v65.0")
-    st.markdown("---")
+    st.title("📚 COVER MASTER")
+    st.caption("AI Design for Ebooks & Kindle")
+    st.divider()
     
-    # Sezione Info Veritiere
-    st.markdown("""
-        <div class="info-card">
-            <h4 style='margin-top:0; color:#58a6ff;'>📊 Info Modelli</h4>
-            <p style='font-size:0.9rem;'><b>Video:</b> Minimax Video-01<br>
-            <span style='color:#8b949e;'>Stabile, 5 secondi, HD.</span></p>
-            <p style='font-size:0.9rem;'><b>Immagine:</b> Flux Schnell<br>
-            <span style='color:#8b949e;'>Ultra-veloce, fotorealistico.</span></p>
-        </div>
-    """, unsafe_allow_html=True)
+    genre = st.selectbox("Genere Letterario:", [
+        "Thriller / Mistero", "Fantasy / Epico", "Fantascienza / Sci-Fi", 
+        "Romanzo Rosa", "Saggistica / Business", "Horror", "Manuale Tecnico"
+    ])
     
-    mode = st.radio("Seleziona Formato Output:", ["Video (5s)", "Immagine HD"])
-    st.markdown("---")
+    title = st.text_input("Titolo dell'Ebook:", placeholder="es. L'Ultima Frontiera")
+    author = st.text_input("Nome Autore:", placeholder="es. Mario Rossi")
     
-    st.subheader("📝 Script in Italiano")
-    it_soggetto = st.text_input("Soggetto:", placeholder="es. Un astronauta")
-    it_azione = st.text_area("Azione/Dettagli:", placeholder="es. Cammina su Marte durante un tramonto rosso")
+    st.divider()
+    desc = st.text_area("Descrizione della scena:", placeholder="es. Una foresta innevata con un lupo solitario sotto la luna piena")
     
-    if st.button("🪄 GENERA PROMPT TECNICO"):
-        if it_soggetto and it_azione:
-            with st.spinner("Ottimizzazione in corso..."):
-                res = translate_prompt(it_soggetto, it_azione)
-                if res:
-                    st.session_state['final_prompt'] = res
-                    st.success("Prompt ottimizzato con successo!")
+    aspect_ratio = "2:3" # Formato standard ebook
+    
+    if st.button("🪄 GENERA CONCEPT"):
+        if title and desc:
+            with st.spinner("Ottimizzazione prompt..."):
+                t = GoogleTranslator(source='it', target='en')
+                scene_en = t.translate(desc)
+                title_en = title.upper()
+                
+                # Prompt Engineering specifico per copertine
+                # Flux è eccellente nel rendere il testo se specificato tra virgolette
+                st.session_state['cover_prompt'] = (
+                    f"Professional ebook cover for a {genre} book. "
+                    f"Central visual: {scene_en}. "
+                    f"The image should have the title '{title}' written in elegant, readable typography at the top. "
+                    f"The author name '{author}' should be at the bottom. "
+                    f"Cinematic lighting, high contrast, book cover composition, award-winning design, 8k."
+                )
+                st.success("Design pronto per la generazione!")
+
+# ==============================================================================
+# 3. WORKSTATION DI GENERAZIONE
+# ==============================================================================
+st.title("🎨 Editor Copertina Ebook")
+col_l, col_r = st.columns([1, 1])
+
+if 'cover_prompt' not in st.session_state: st.session_state['cover_prompt'] = ""
+if 'final_image' not in st.session_state: st.session_state['final_image'] = None
+
+with col_l:
+    final_p = st.text_area("Prompt Tecnico per l'IA:", value=st.session_state['cover_prompt'], height=200)
+    
+    if st.button("🔥 GENERA COPERTINA HD"):
+        if not final_p:
+            st.error("Traduci il concept prima!")
+        elif "REPLICATE_API_TOKEN" not in st.secrets:
+            st.error("Manca il Token API!")
         else:
-            st.warning("Compila entrambi i campi!")
-
-    st.markdown("---")
-    if st.button("🗑️ Svuota Sessione"):
-        st.session_state.clear()
-        st.rerun()
-
-# ==============================================================================
-# 4. WORKSTATION CENTRALE (PRODUZIONE)
-# ==============================================================================
-st.title("🚀 AI Production Workstation")
-st.caption("Configurazione: Minimax Video-01 & Flux.1 Schnell")
-
-col_left, col_right = st.columns([1.5, 1])
-
-with col_left:
-    prompt_ready = st.text_area(
-        "Prompt Finale (Inglese):", 
-        value=st.session_state['final_prompt'], 
-        height=180,
-        help="Puoi modificare manualmente il prompt per aggiungere dettagli tecnici."
-    )
-    
-    if st.button("🔥 AVVIA GENERAZIONE AI"):
-        if not prompt_ready:
-            st.error("⚠️ Il prompt è vuoto. Usa la sidebar per generarlo o scrivilo manualmente.")
-        elif check_replicate_token():
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-            st.session_state['output_media'] = None
-            
             try:
-                if mode == "Immagine HD":
-                    with st.spinner("🎨 Rendering Immagine (Flux)..."):
-                        # Esecuzione Flux Schnell (Modello ufficiale stabilissimo)
-                        output = client.run(
-                            "black-forest-labs/flux-schnell",
-                            input={"prompt": prompt_ready}
-                        )
-                        st.session_state['output_media'] = str(output[0])
-                        st.balloons()
-                else:
-                    with st.status("🎬 Produzione Video (Minimax)...", expanded=True) as status:
-                        # Minimax Video-01: Il modello più veritiero e funzionale oggi
-                        status.write("Inizializzazione server AI...")
-                        prediction = client.run(
-                            "minimax/video-01",
-                            input={"prompt": prompt_ready}
-                        )
-                        # Minimax restituisce l'URL del video generato
-                        st.session_state['output_media'] = str(prediction)
-                        status.write("Produzione completata!")
-                        st.balloons()
-                        
+                with st.spinner("L'IA sta disegnando la tua copertina..."):
+                    # Usiamo Flux.1 Pro per la massima leggibilità del testo
+                    output = client.run(
+                        "black-forest-labs/flux-1.1-pro",
+                        input={
+                            "prompt": final_p,
+                            "aspect_ratio": "2:3",
+                            "output_format": "jpg",
+                            "output_quality": 100
+                        }
+                    )
+                    st.session_state['final_image'] = str(output)
+                    st.balloons()
             except Exception as e:
-                st.error(f"❌ Errore durante la generazione: {str(e)}")
-                st.info("Consiglio: Verifica il credito residuo sul tuo account Replicate.")
+                st.error(f"Errore: {e}")
 
 # ==============================================================================
-# 5. PREVIEW E DOWNLOAD
+# 4. ANTEPRIMA PROFESSIONALE
 # ==============================================================================
-with col_right:
-    st.subheader("🎞️ Anteprima Risultato")
-    result = st.session_state['output_media']
-    
-    if result:
-        st.markdown("""<div style='background:#1c2128; padding:10px; border-radius:8px; border:1px solid #30363d;'>""", unsafe_allow_html=True)
-        if mode == "Immagine HD":
-            st.image(result, use_container_width=True, caption="Generata con Flux.1")
-            st.link_button("📥 Scarica Immagine HD", result)
-        else:
-            st.video(result)
-            st.link_button("📥 Scarica Video 5s", result)
-        st.markdown("</div>", unsafe_allow_html=True)
+with col_r:
+    st.subheader("🖼️ Anteprima Editoriale")
+    if st.session_state['final_image']:
+        img_url = st.session_state['final_image']
+        
+        # Visualizzazione con stile "Libro"
+        st.markdown(f'<img src="{img_url}" class="ebook-preview" style="width:100%;">', unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.download_button(
+            label="📥 Scarica Copertina (Alta Risoluzione)",
+            data=requests.get(img_url).content,
+            file_name="ebook_cover.jpg",
+            mime="image/jpeg"
+        )
     else:
-        # Placeholder quando non c'è ancora un output
-        st.markdown("""
-            <div style='height: 300px; border: 2px dashed #30363d; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #484f58;'>
-                In attesa di generazione...
-            </div>
-        """, unsafe_allow_html=True)
+        st.info("Riempi i campi a sinistra e genera per vedere l'anteprima.")
 
-# ==============================================================================
-# 6. FOOTER E LOG
-# ==============================================================================
-st.markdown("---")
-f_col1, f_col2, f_col3 = st.columns(3)
-with f_col1:
-    st.caption("Engine: Replicate API")
-with f_col2:
-    st.caption("Version: 65.0 Ultimate")
-with f_col3:
-    st.caption("Status: System Ready")
-
-# Fine del codice
+st.caption("v66.0 - Ebook Cover Master | Flux Pro Engine | Formato 2:3")
