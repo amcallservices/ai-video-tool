@@ -2,69 +2,91 @@ import streamlit as st
 import replicate
 import requests
 import time
+import os
 
-# 1. Configurazione Pagina
-st.set_page_config(page_title="AI Video Studio", page_icon="🎬")
+# 1. Configurazione della Pagina
+st.set_page_config(
+    page_title="AI Video Studio", 
+    page_icon="🎬",
+    layout="centered"
+)
 
-# 2. Controllo Token nei Secrets
+# 2. Gestione Autenticazione (Secrets)
+# Questo blocco legge la chiave REPLICATE_API_TOKEN dai Secrets di Streamlit
 if "REPLICATE_API_TOKEN" in st.secrets:
-    # Configurazione globale del token per la libreria replicate
-    replicate.api_key = st.secrets["REPLICATE_API_TOKEN"]
+    replicate_token = st.secrets["REPLICATE_API_TOKEN"]
+    # Configuriamo l'ambiente per la libreria
+    os.environ["REPLICATE_API_TOKEN"] = replicate_token
+    client = replicate.Client(api_token=replicate_token)
 else:
-    st.error("Token non trovato! Vai in Settings > Secrets e aggiungi REPLICATE_API_TOKEN")
+    st.error("⚠️ Errore: Token non trovato! Configura REPLICATE_API_TOKEN nei Secrets di Streamlit.")
+    st.info("Vai su Settings > Secrets e incolla: REPLICATE_API_TOKEN = 'r8_tuotoken'")
     st.stop()
 
+# 3. Interfaccia Utente
 st.title("🎬 AI Video Studio")
-st.write("Genera video di alta qualità in pochi minuti.")
+st.subheader("Trasforma le tue idee in video cinematografici")
 
-# 3. Input Utente
-with st.form("video_form"):
-    prompt = st.text_area("Descrizione del video (in inglese):", 
-                         placeholder="A majestic lion walking through a futuristic neon city, 4k, cinematic...")
-    submit = st.form_submit_button("Genera Video ✨")
+with st.form("generator_form"):
+    prompt = st.text_area(
+        "Descrivi il video (in inglese funziona meglio):",
+        placeholder="A futuristic cyber-city with neon lights, flying cars, rain, 4k cinematic style...",
+        height=150
+    )
+    
+    # Bottone di invio
+    submit_button = st.form_submit_button("Genera Video ✨")
 
-if submit:
+# 4. Logica di Generazione
+if submit_button:
     if not prompt:
-        st.warning("Per favore, inserisci una descrizione.")
+        st.warning("Per favore, inserisci una descrizione prima di iniziare.")
     else:
         status_placeholder = st.empty()
         
         try:
-            status_placeholder.info("🚀 Connessione ai server di generazione...")
+            status_placeholder.info("🚀 Connessione ai server AI in corso...")
             
-            # Usiamo il modello Minimax (video-01) che è molto stabile
-            # Non usiamo la versione specifica per evitare l'errore 422
-            prediction = replicate.predictions.create(
+            # Creazione della "Prediction" (Processo asincrono)
+            # Utilizziamo il modello Minimax che è molto affidabile
+            prediction = client.predictions.create(
                 model="minimax/video-01",
                 input={"prompt": prompt}
             )
 
-            # Loop di monitoraggio
+            # Loop di controllo dello stato (Polling)
             while prediction.status not in ["succeeded", "failed", "canceled"]:
                 status_placeholder.info(f"⏳ L'AI sta creando il video... Stato: {prediction.status}")
-                time.sleep(10) # Aspettiamo 10 secondi tra un controllo e l'altro
-                prediction.reload()
+                time.sleep(5) # Attendi 5 secondi tra un controllo e l'altro
+                prediction.reload() # Aggiorna i dati dal server
 
             if prediction.status == "succeeded":
-                # L'output di Minimax è direttamente l'URL del video
+                # L'output è l'URL del video generato
                 video_url = prediction.output
-                status_placeholder.success("✅ Video completato!")
+                status_placeholder.success("✅ Video generato con successo!")
+                
+                # Visualizzazione Video
                 st.video(video_url)
                 
-                # Download
+                # Bottone per il download locale
                 video_content = requests.get(video_url).content
-                st.download_button("💾 Scarica Video MP4", data=video_content, file_name="video_generato.mp4")
+                st.download_button(
+                    label="💾 Scarica Video MP4",
+                    data=video_content,
+                    file_name="video_generato.mp4",
+                    mime="video/mp4"
+                )
             else:
-                st.error(f"Errore nella generazione: {prediction.error}")
+                st.error(f"La generazione è fallita. Errore: {prediction.error}")
 
         except Exception as e:
-            if "422" in str(e):
-                st.error("Errore 422: Problema di permessi o versione.")
-                st.info("👉 Soluzione: Vai su https://replicate.com/minimax/video-01 e clicca 'Run' una volta per accettare i termini d'uso.")
-            elif "402" in str(e):
-                st.error("Credito insufficiente su Replicate. Carica almeno 5$ per continuare.")
+            if "401" in str(e):
+                st.error("❌ Errore 401: Autenticazione fallita. Controlla il tuo Token API.")
+            elif "402" in str(e) or "free" in str(e).lower():
+                st.error("❌ Credito esaurito! I modelli video richiedono un saldo positivo su Replicate.")
             else:
-                st.error(f"Si è verificato un errore: {e}")
+                st.error(f"Si è verificato un errore imprevisto: {e}")
 
+# Footer
 st.markdown("---")
-st.caption("Tip: Se il video non appare subito, ricarica la pagina tra qualche istante.")
+st.caption("Creato con Streamlit + Replicate API (Minimax Video-01)")
