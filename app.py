@@ -1,13 +1,3 @@
-"""
-================================================================================
-AI MULTIMEDIA STUDIO - THE BUDGET KING v60.0
---------------------------------------------------------------------------------
-ENGINE VIDEO: CogVideoX-5b (Ultra-Economico & Stabile)
-ENGINE IMMAGINE: Flux Schnell (Veloce/Gratis-Tier)
-DURATA: 15s (3 clip) - Costo stimato totale: < 0.40€
-================================================================================
-"""
-
 import streamlit as st
 import replicate
 import requests
@@ -17,132 +7,102 @@ import uuid
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from deep_translator import GoogleTranslator
 
-# --- 1. SETUP UI ---
-st.set_page_config(page_title="AI Studio Budget King", page_icon="💰", layout="wide")
+# --- CONFIGURAZIONE UI ---
+st.set_page_config(page_title="AI Economy Studio", page_icon="💰", layout="wide")
 
 st.markdown("""
     <style>
-    [data-testid="sidebar-button"] { display: none !important; }
-    [data-testid="stSidebar"] { min-width: 400px !important; background-color: #0d1117; border-right: 1px solid #333; }
-    #MainMenu, footer, header, .stAppDeployButton { visibility: hidden; }
+    [data-testid="stSidebar"] { background-color: #0d1117; border-right: 1px solid #333; }
     .main { background-color: #0d1117; color: #c9d1d9; }
     div.stButton > button:first-child {
-        background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%);
-        color: black; font-size: 1.2rem; font-weight: 800; height: 4.5rem; border-radius: 10px; width: 100%; border: none;
+        background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        color: white; font-weight: 800; border-radius: 10px; border: none; width: 100%; height: 3.5rem;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. ENGINE MONTAGGIO ---
-def stitch_master(urls):
+# --- FUNZIONE MONTAGGIO ---
+def merge_videos(urls):
     session_id = str(uuid.uuid4())[:6]
     temp_files, clips = [], []
-    out_name = f"budget_master_{session_id}.mp4"
+    output_filename = f"final_video_{session_id}.mp4"
     try:
         for i, url in enumerate(urls):
-            fname = f"part_{i}_{session_id}.mp4"
-            r = requests.get(url, timeout=60)
-            if r.status_code == 200:
-                with open(fname, "wb") as f: f.write(r.content)
-                temp_files.append(fname)
-                clips.append(VideoFileClip(fname))
-        if clips:
-            final = concatenate_videoclips(clips, method="compose")
-            final.write_videofile(out_name, codec="libx264", audio=False, logger=None)
-            return out_name
+            path = f"temp_{i}.mp4"
+            resp = requests.get(url)
+            with open(path, "wb") as f: f.write(resp.content)
+            temp_files.append(path)
+            clips.append(VideoFileClip(path))
+        
+        final = concatenate_videoclips(clips, method="compose")
+        final.write_videofile(output_filename, codec="libx264", audio=False, logger=None)
+        return output_filename
     except Exception as e:
         st.error(f"Errore montaggio: {e}")
+        return None
     finally:
         for c in clips: c.close()
         for f in temp_files: 
             if os.path.exists(f): os.remove(f)
-    return None
 
-# --- 3. LOGICA DI PROCESSO ---
-if 'p_en' not in st.session_state: st.session_state['p_en'] = ""
-if 'res_media' not in st.session_state: st.session_state['res_media'] = None
-
+# --- SIDEBAR ---
 with st.sidebar:
-    st.title("💰 BUDGET HUB")
-    st.caption("v60.0 - CogVideoX Engine")
-    mode = st.radio("Scegli:", ["Video (15s)", "Immagine HD"])
+    st.title("💰 ECONOMY HUB")
+    st.info("Engine: CogVideoX (Video) & Flux (Immagine)")
+    mode = st.radio("Cosa vuoi creare?", ["Video 15s (Economy)", "Immagine HD"])
     st.divider()
-    it_sub = st.text_input("Soggetto (IT):")
-    it_act = st.text_area("Azione (IT):")
+    soggetto = st.text_input("Soggetto (es: Un gatto astronauta)")
+    azione = st.text_area("Cosa fa? (es: Cammina sulla luna)")
     
-    if st.button("🪄 TRADUCI SCRIPT"):
-        if it_sub and it_act:
-            t = GoogleTranslator(source='it', target='en')
-            st.session_state['p_en'] = f"{t.translate(it_sub)}, {t.translate(it_act)}, cinematic lighting, high quality."
-            st.success("Testo Tradotto!")
+    prompt_en = ""
+    if st.button("🪄 TRADUCI E PREPARA"):
+        if soggetto and azione:
+            full_it = f"{soggetto}, {azione}, stile cinematografico, alta definizione"
+            prompt_en = GoogleTranslator(source='it', target='en').translate(full_it)
+            st.session_state['ready_prompt'] = prompt_en
+            st.success("Pronto!")
 
-# --- 4. AREA PRODUZIONE ---
-st.title(f"🚀 Workstation: {mode}")
-col_l, col_r = st.columns([1.5, 1])
+# --- MAIN ---
+st.title("🚀 Produzione AI a basso costo")
+col1, col2 = st.columns([2, 1])
 
-with col_l:
-    p_final = st.text_area("Prompt (EN):", value=st.session_state['p_en'], height=150)
+with col1:
+    final_p = st.text_area("Prompt Finale (EN):", value=st.session_state.get('ready_prompt', ''), height=100)
     
-    if st.button("🔥 GENERA ECONOMICO"):
-        if not p_final:
-            st.error("Traduci lo script!")
-        elif "REPLICATE_API_TOKEN" not in st.secrets:
-            st.error("Manca il Token API!")
+    if st.button("🔥 GENERA ORA"):
+        if not final_p:
+            st.warning("Traduci prima il prompt nella sidebar!")
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-            st.session_state['res_media'] = None
             
             if mode == "Immagine HD":
-                with st.spinner("Flux Rendering..."):
-                    try:
-                        out = client.run("black-forest-labs/flux-schnell", input={"prompt": p_final})
-                        st.session_state['res_media'] = str(out[0])
-                    except Exception as e:
-                        st.error(f"Errore: {e}")
+                with st.spinner("Generazione immagine..."):
+                    img_url = client.run("black-forest-labs/flux-schnell", input={"prompt": final_p})
+                    st.session_state['result'] = img_url[0]
             else:
-                urls = []
-                with st.status("🎬 Generazione Video (CogVideoX)...", expanded=True) as status:
-                    # COGVIDEOX: Estremamente economico su Replicate
-                    model_path = "thibaudz/cogvideox-5b"
-                    
+                video_urls = []
+                with st.status("🎬 Generando 3 clip da 5 secondi...", expanded=True) as status:
+                    # CogVideoX-5b è l'opzione più economica ora
+                    model = "thibaudz/cogvideox-5b"
                     for i in range(3):
-                        try:
-                            status.write(f"Produzione clip {i+1}/3...")
-                            # CogVideoX-5b è veloce e stabile
-                            prediction = client.run(
-                                model_path,
-                                input={
-                                    "prompt": f"{p_final}, segment {i+1}",
-                                    "num_frames": 49
-                                }
-                            )
-                            # CogVideoX restituisce l'URL direttamente
-                            urls.append(str(prediction))
-                            
-                            if i < 2: 
-                                status.write("⏳ Pausa anti-throttle (12s)...")
-                                time.sleep(12)
-                        except Exception as e:
-                            st.error(f"Errore alla clip {i+1}: {e}")
-                            break
+                        status.write(f"Lavoro sulla clip {i+1}/3...")
+                        res = client.run(model, input={"prompt": f"{final_p}, sequence part {i+1}", "num_frames": 49})
+                        video_urls.append(res)
+                        time.sleep(2) # Piccola pausa per stabilità
                     
-                    if len(urls) >= 1:
-                        status.write("📦 Unione dei segmenti...")
-                        st.session_state['res_media'] = stitch_master(urls)
+                    status.write("📦 Unendo i pezzi...")
+                    st.session_state['result'] = merge_videos(video_urls)
 
-with col_r:
-    st.subheader("🎞️ Anteprima")
-    res = st.session_state['res_media']
+with col2:
+    st.subheader("📺 Anteprima")
+    res = st.session_state.get('result')
     if res:
         if mode == "Immagine HD":
             st.image(res)
-            st.link_button("📥 Scarica", res)
         else:
-            if os.path.exists(res):
+            if os.path.exists(str(res)):
                 st.video(res)
                 with open(res, "rb") as f:
-                    st.download_button("📥 Scarica Master 15s", f, "video_final.mp4")
+                    st.download_button("📥 Scarica Master", f, "video.mp4")
     else:
-        st.info("In attesa...")
-
-st.caption("v60.0 - Budget King | CogVideoX Strategy | Sidebar Locked")
+        st.info("Il tuo contenuto apparirà qui.")
