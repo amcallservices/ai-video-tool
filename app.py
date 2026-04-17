@@ -1,273 +1,202 @@
-"""
-================================================================================
-AI MULTIMEDIA PRODUCTION SUITE - THE SINGULARITY v50.0
---------------------------------------------------------------------------------
-SISTEMA: Architettura Modulare Enterprise
-ENGINE VIDEO: Luma Dream Machine (Stabile/Economico)
-ENGINE IMAGE: Flux Schnell (Iper-realistico/Veloce)
-LOGICA: Auto-Retry 500, Anti-Throttle 429, Stitching Video 15s
-DESIGN: Sidebar Bloccata (CSS Injection), UI Cinema-Dark
-================================================================================
-"""
-
 import streamlit as st
 import replicate
 import requests
 import time
 import os
 import uuid
-from datetime import datetime
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from deep_translator import GoogleTranslator
 
 # ==============================================================================
-# 1. DESIGN SYSTEM & CSS INJECTION (SIDEBAR LOCKED)
+# 1. ARCHITETTURA UI & DESIGN (SIDEBAR BLOCCATA)
 # ==============================================================================
 
-st.set_page_config(
-    page_title="AI Studio Singularity v50",
-    page_icon="💎",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="AI Studio Ultimate v51", page_icon="🎬", layout="wide")
 
-def inject_enterprise_css():
-    st.markdown("""
-        <style>
-        /* BLOCCO SIDEBAR FISICO */
-        [data-testid="sidebar-button"] { display: none !important; }
-        [data-testid="stSidebar"] {
-            min-width: 420px !important;
-            max-width: 420px !important;
-            background-color: #0d1117;
-            border-right: 1px solid #30363d;
-        }
+st.markdown("""
+    <style>
+    /* Rimozione pulsanti e blocco sidebar */
+    [data-testid="sidebar-button"] { display: none !important; }
+    [data-testid="stSidebar"] {
+        min-width: 400px !important;
+        background-color: #0d1117;
+        border-right: 1px solid #30363d;
+    }
+    #MainMenu, footer, header, .stAppDeployButton { visibility: hidden; }
+    .main { background-color: #0d1117; color: #c9d1d9; }
+    
+    /* Input Styling */
+    .stTextArea textarea, .stTextInput input {
+        background-color: #161b22 !important;
+        color: #58a6ff !important;
+        border: 1px solid #30363d !important;
+    }
 
-        /* UI CLEANUP */
-        #MainMenu, footer, header, .stAppDeployButton { visibility: hidden; }
-        .main { background-color: #0d1117; color: #c9d1d9; }
-        
-        /* INPUT STYLING */
-        .stTextArea textarea, .stTextInput input {
-            background-color: #161b22 !important;
-            color: #58a6ff !important;
-            border: 1px solid #30363d !important;
-            border-radius: 8px !important;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-        }
-
-        /* MASTER BUTTONS */
-        div.stButton > button:first-child {
-            background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
-            color: white; font-size: 1.1rem; font-weight: 700; padding: 0.75rem 2rem;
-            border-radius: 10px; border: none; width: 100%; height: 4rem;
-            transition: 0.3s all ease; box-shadow: 0 4px 15px rgba(46, 160, 67, 0.2);
-        }
-        
-        div.stButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(46, 160, 67, 0.4);
-        }
-
-        /* STATUS CARDS */
-        .status-box {
-            background: #161b22;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 5px solid #58a6ff;
-            margin: 10px 0;
-        }
-        </style>
+    /* Pulsante Master */
+    div.stButton > button:first-child {
+        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+        color: white; font-size: 1.2rem; font-weight: 800; height: 4.5rem;
+        border-radius: 10px; width: 100%; border: none;
+        box-shadow: 0 4px 15px rgba(29, 78, 216, 0.3);
+    }
+    </style>
     """, unsafe_allow_html=True)
 
-inject_enterprise_css()
-
 # ==============================================================================
-# 2. CORE LOGIC: VIDEO STITCHING ENGINE
+# 2. LOGICA DI MONTAGGIO (STITCHING)
 # ==============================================================================
 
-def process_video_stitching(urls):
-    """
-    Gestisce il download e la concatenazione delle clip.
-    Implementa la pulizia automatica dei file per prevenire saturazione disco.
-    """
-    session_id = str(uuid.uuid4())[:8]
-    temp_paths = []
+def stitch_video_clips(urls):
+    """Scarica e unisce le clip video in un unico file master."""
+    session_id = str(uuid.uuid4())[:6]
+    temp_files = []
     clips = []
-    final_output = f"master_{session_id}.mp4"
+    output_name = f"master_production_{session_id}.mp4"
     
     try:
         for i, url in enumerate(urls):
-            tmp_name = f"part_{i}_{session_id}.mp4"
-            response = requests.get(url, timeout=60)
-            if response.status_code == 200:
-                with open(tmp_name, "wb") as f:
-                    f.write(response.content)
-                temp_paths.append(tmp_name)
-                clips.append(VideoFileClip(tmp_name))
+            fname = f"clip_{i}_{session_id}.mp4"
+            r = requests.get(url, timeout=60)
+            if r.status_code == 200:
+                with open(fname, "wb") as f:
+                    f.write(r.content)
+                temp_files.append(fname)
+                clips.append(VideoFileClip(fname))
         
         if clips:
-            # Metodo compose garantisce stabilità se i codec variano leggermente
-            final_clip = concatenate_videoclips(clips, method="compose")
-            final_clip.write_videofile(final_output, codec="libx264", audio=False, logger=None)
-            return final_output
+            final = concatenate_videoclips(clips, method="compose")
+            final.write_videofile(output_name, codec="libx264", audio=False, logger=None)
+            return output_name
     except Exception as e:
-        st.error(f"Errore critico nello Stitching: {e}")
-        return None
+        st.error(f"Errore montaggio: {e}")
     finally:
         for c in clips: c.close()
-        for f in temp_paths:
+        for f in temp_files:
             if os.path.exists(f): os.remove(f)
+    return None
 
 # ==============================================================================
-# 3. SESSION STATE & TRADUZIONE
+# 3. SIDEBAR & CONTROLLI
 # ==============================================================================
 
-if 'script_en' not in st.session_state: st.session_state['script_en'] = ""
-if 'production_res' not in st.session_state: st.session_state['production_res'] = None
-if 'media_type' not in st.session_state: st.session_state['media_type'] = "Video"
-
-def run_translation(it_sub, it_act):
-    try:
-        translator = GoogleTranslator(source='it', target='en')
-        t_sub = translator.translate(it_sub)
-        t_act = translator.translate(it_act)
-        return f"Professional cinematic shot, masterpiece quality. Subject: {t_sub}. Action: {t_act}. Realistic motion, 4k, detailed textures."
-    except Exception:
-        return f"{it_sub}, {it_act}"
-
-# ==============================================================================
-# 4. SIDEBAR: THE CONTROL TOWER
-# ==============================================================================
+if 'eng_script' not in st.session_state: st.session_state['eng_script'] = ""
+if 'final_output' not in st.session_state: st.session_state['final_output'] = None
+if 'is_image_mode' not in st.session_state: st.session_state['is_image_mode'] = False
 
 with st.sidebar:
-    st.title("💎 SINGULARITY v50")
-    st.caption("Advanced AI Production Suite")
+    st.title("💎 STUDIO v51.0")
+    st.caption("Luma & Flux Enterprise Edition")
     st.divider()
     
     # SELETTORE MODALITÀ
-    st.session_state['media_type'] = st.radio(
-        "Modalità Output:", 
-        ["Video (15s Reali)", "Immagine (Flux)"],
-        help="Il video unisce 3 clip per garantire la durata."
-    )
+    choice = st.radio("Seleziona Output:", ["Video (15s)", "Immagine HD"])
+    st.session_state['is_image_mode'] = (choice == "Immagine HD")
     
     st.divider()
+    it_sub = st.text_input("Soggetto (IT):")
+    it_act = st.text_area("Azione/Dettagli (IT):")
     
-    # STORYBOARD INPUT
-    st.subheader("🇮🇹 Storyboard Italiano")
-    it_sub = st.text_input("Soggetto:", placeholder="Es: Un guerriero samurai")
-    it_act = st.text_area("Azione/Ambiente:", placeholder="Es: Sguaina la spada sotto i ciliegi in fiore, petali che cadono.")
-    
-    if st.button("🪄 ELABORA E TRADUCI"):
+    if st.button("🪄 TRADUCI E OTTIMIZZA"):
         if it_sub and it_act:
-            with st.spinner("Intelligenza Linguistica in corso..."):
-                st.session_state['script_en'] = run_translation(it_sub, it_act)
-                st.success("Script Ottimizzato!")
-    
-    st.divider()
-    if st.button("🗑️ RESET SESSIONE"):
+            with st.spinner("Traduzione..."):
+                t = GoogleTranslator(source='it', target='en')
+                res = f"{t.translate(it_sub)}, {t.translate(it_act)}, cinematic lighting, 4k, masterpiece."
+                st.session_state['eng_script'] = res
+                st.success("Prompt Pronto!")
+
+    if st.button("🗑️ Reset"):
         st.session_state.clear()
         st.rerun()
 
 # ==============================================================================
-# 5. MAIN WORKSTATION: PRODUCTION AREA
+# 4. WORKSTATION DI PRODUZIONE
 # ==============================================================================
 
-st.title(f"🚀 Produzione {st.session_state['media_type']}")
-st.markdown("---")
+st.title(f"🚀 Workstation: {choice}")
+col_l, col_r = st.columns([1.5, 1])
 
-col_editor, col_viewer = st.columns([1.5, 1])
-
-with col_editor:
-    st.subheader("📝 Script Tecnico")
-    final_p = st.text_area("Review Prompt (EN):", value=st.session_state['script_en'], height=200)
+with col_l:
+    prompt_final = st.text_area("Prompt Tecnico (EN):", value=st.session_state['eng_script'], height=150)
     
-    if st.button("🔥 AVVIA PRODUZIONE"):
-        if not final_p:
-            st.error("Traduci o inserisci uno script!")
+    if st.button(f"🔥 GENERA {choice.upper()}"):
+        if not prompt_final:
+            st.error("Traduci lo script prima!")
         elif "REPLICATE_API_TOKEN" not in st.secrets:
-            st.error("REPLICATE_API_TOKEN non trovato nei Secrets!")
+            st.error("Manca il Token API nei Secrets!")
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-            st.session_state['production_res'] = None
+            st.session_state['final_output'] = None
             
-            # --- FLUSSO IMMAGINE ---
-            if st.session_state['media_type'] == "Immagine (Flux)":
-                with st.spinner("Rendering Immagine Flux Schnell..."):
+            # --- MODALITÀ IMMAGINE ---
+            if st.session_state['is_image_mode']:
+                with st.spinner("Rendering Flux..."):
                     try:
-                        output = client.run("black-forest-labs/flux-schnell", input={"prompt": final_p})
-                        st.session_state['production_res'] = str(output[0])
+                        out = client.run("black-forest-labs/flux-schnell", input={"prompt": prompt_final})
+                        st.session_state['final_output'] = str(out[0])
+                        st.balloons()
                     except Exception as e:
-                        st.error(f"Errore API Immagine: {e}")
-
-            # --- FLUSSO VIDEO (LUMA + AUTO-RETRY + STITCHING) ---
+                        st.error(f"Errore Server Immagine: {e}")
+            
+            # --- MODALITÀ VIDEO ---
             else:
                 urls = []
-                with st.status("🎬 Sequenziamento Video Attivo...", expanded=True) as status:
+                with st.status("🎬 Sequenziamento Video...", expanded=True) as status:
                     for i in range(3):
-                        clip_success = False
-                        attempts = 3
-                        
-                        while not clip_success and attempts > 0:
+                        clip_done = False
+                        retries = 2
+                        while not clip_done and retries >= 0:
                             try:
-                                status.write(f"Generazione Clip {i+1}/3 - Tentativo {4-attempts}...")
-                                # Luma Dream Machine: Bilanciamento Costo/Qualità
-                                pred = client.predictions.create(
+                                status.write(f"Produzione clip {i+1}/3 (Tentativo {3-retries})...")
+                                prediction = client.predictions.create(
                                     model="luma/dream-machine",
-                                    input={"prompt": f"{final_p}, segment {i+1} of a continuous sequence."}
+                                    input={"prompt": f"{prompt_final}, part {i+1}"}
                                 )
-                                
-                                while pred.status not in ["succeeded", "failed", "canceled"]:
+                                while prediction.status not in ["succeeded", "failed"]:
                                     time.sleep(5)
-                                    pred.reload()
+                                    prediction.reload()
                                 
-                                if pred.status == "succeeded":
-                                    urls.append(str(pred.output))
-                                    clip_success = True
+                                if prediction.status == "succeeded":
+                                    urls.append(str(prediction.output))
+                                    clip_done = True
                                     if i < 2: 
-                                        status.write("⏳ Pausa Anti-Throttle (15s)...")
-                                        time.sleep(15) # Protezione credito < $5
+                                        status.write("⏳ Pausa anti-throttle (15s)...")
+                                        time.sleep(15)
                                 else:
-                                    attempts -= 1
-                                    status.write("⚠️ Server Error 500. Raffreddamento...")
+                                    retries -= 1
                                     time.sleep(10)
                             except Exception as e:
-                                attempts -= 1
+                                retries -= 1
                                 time.sleep(10)
                         
-                        if not clip_success:
-                            st.error(f"Fallimento definitivo Clip {i+1}. Riprova più tardi.")
+                        if not clip_done:
+                            st.error(f"Impossibile generare la clip {i+1} dopo 3 tentativi.")
                             break
                     
                     if len(urls) >= 1:
-                        status.write("📦 Stitching dei segmenti in corso...")
-                        st.session_state['production_res'] = process_video_stitching(urls)
+                        status.write("📦 Unione dei segmenti...")
+                        st.session_state['final_output'] = stitch_video_clips(urls)
+                        if st.session_state['final_output']: st.balloons()
 
 # ==============================================================================
-# 6. RISULTATI E DOWNLOAD
+# 5. ANTEPRIMA E DOWNLOAD
 # ==============================================================================
 
-with col_viewer:
-    st.subheader("🎞️ Risultato Finale")
-    res = st.session_state['production_res']
+with col_r:
+    st.subheader("🎞️ Anteprima")
+    res = st.session_state['final_output']
     
     if res:
-        if "Immagine" in st.session_state['media_type']:
-            st.image(res, use_column_width=True)
-            st.link_button("📥 Scarica Immagine HD", res)
+        if st.session_state['is_image_mode']:
+            st.image(res)
+            st.link_button("📥 Scarica Immagine", res)
         else:
             if os.path.exists(res):
                 st.video(res)
                 with open(res, "rb") as f:
-                    st.download_button("📥 Scarica Master 15s", f, "video_production.mp4")
+                    st.download_button("📥 Scarica Video 15s", f, "video_final.mp4")
             else:
-                st.error("Errore: Il file video è stato generato ma non trovato sul disco.")
+                st.error("File video non trovato.")
     else:
-        st.info("In attesa di dati validi dal server...")
+        st.info("In attesa di produzione...")
 
-# ==============================================================================
-# 7. FOOTER
-# ==============================================================================
-st.markdown("---")
-st.caption("v50.0 The Singularity | Enterprise Engine | Luma & Flux Hybrid | Sidebar Locked")
+st.caption("v51.0 Ultimate | Flux & Luma Hybrid | Sidebar Locked")
