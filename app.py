@@ -1,9 +1,9 @@
 """
 ================================================================================
-AI MULTIMEDIA STUDIO - HYBRID-STABLE v46.0
+AI MULTIMEDIA STUDIO - DEEP-SHIELD v47.0
 --------------------------------------------------------------------------------
-SOLUZIONE: Switch Video/Immagine + Endpoint Luma/Flux ultra-stabili.
-LOGICA: Gestione automatica del credito e delle pause anti-throttle.
+FIX: Gestione errori 500 e protezione FileNotFoundError.
+ENGINE: Luma (Video) / Flux (Immagine) - I più stabili del 2026.
 ================================================================================
 """
 
@@ -16,7 +16,7 @@ from moviepy.editor import VideoFileClip, concatenate_videoclips
 from deep_translator import GoogleTranslator
 
 # --- 1. SETUP UI ---
-st.set_page_config(page_title="AI Studio - Video & Image", page_icon="🎬", layout="wide")
+st.set_page_config(page_title="AI Studio Safe-Mode", page_icon="🛡️", layout="wide")
 
 st.markdown("""
     <style>
@@ -25,129 +25,130 @@ st.markdown("""
     #MainMenu, footer, header, .stAppDeployButton { visibility: hidden; }
     .main { background-color: #0d1117; }
     div.stButton > button:first-child {
-        background: linear-gradient(135deg, #3498db 0%, #1d4ed8 100%);
+        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
         color: white; font-size: 1.2rem; font-weight: 800; height: 4rem; border-radius: 8px; width: 100%;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. LOGICA MONTAGGIO VIDEO ---
+# --- 2. LOGICA MONTAGGIO VIDEO (CON PROTEZIONE) ---
 def stitch_master(urls):
     temp_files = []
     clips = []
-    out = "master_output.mp4"
+    out = "final_output_master.mp4"
     try:
         for i, url in enumerate(urls):
             fname = f"part_{i}.mp4"
-            r = requests.get(url)
+            r = requests.get(url, timeout=30)
             if r.status_code == 200:
                 with open(fname, "wb") as f: f.write(r.content)
                 temp_files.append(fname)
                 clips.append(VideoFileClip(fname))
+        
         if clips:
             final = concatenate_videoclips(clips, method="compose")
-            final.write_videofile(out, codec="libx264", audio=False)
+            final.write_videofile(out, codec="libx264", audio=False, logger=None)
             return out
-        return None
+    except Exception as e:
+        st.error(f"Errore durante il montaggio video: {e}")
     finally:
         for c in clips: c.close()
         for f in temp_files: 
             if os.path.exists(f): os.remove(f)
+    return None
 
 # --- 3. SESSION STATE ---
 if 'eng_p' not in st.session_state: st.session_state['eng_p'] = ""
 if 'media_res' not in st.session_state: st.session_state['media_res'] = None
+if 'is_image' not in st.session_state: st.session_state['is_image'] = False
 
-# --- 4. SIDEBAR (Configurazione) ---
+# --- 4. SIDEBAR ---
 with st.sidebar:
-    st.title("🛠️ STUDIO CONFIG")
-    st.divider()
-    
-    # SELETTORE MODALITÀ
-    mode = st.radio("Cosa vuoi generare?", ["Video (15s)", "Immagine Singola"], index=0)
-    
+    st.title("🛡️ SAFE CONTROL")
+    mode = st.radio("Seleziona Output:", ["Video (15s)", "Immagine Singola"])
     st.divider()
     it_sub = st.text_input("Soggetto (IT):")
-    it_act = st.text_area("Dettagli/Azione (IT):")
+    it_act = st.text_area("Azione (IT):")
     
-    if st.button("🪄 TRADUCI SCRIPT"):
+    if st.button("🪄 TRADUCI"):
         if it_sub and it_act:
-            with st.spinner("Traduzione..."):
-                ts = GoogleTranslator(source='it', target='en').translate(it_sub)
-                ta = GoogleTranslator(source='it', target='en').translate(it_act)
-                st.session_state['eng_p'] = f"{ts}, {ta}, professional lighting, 4k, high quality."
-                st.success("Pronto!")
+            ts = GoogleTranslator(source='it', target='en').translate(it_sub)
+            ta = GoogleTranslator(source='it', target='en').translate(it_act)
+            st.session_state['eng_p'] = f"{ts}, {ta}, high quality, cinematic."
+            st.success("Testo pronto!")
 
-# --- 5. AREA PRODUZIONE ---
+# --- 5. PRODUZIONE ---
 st.title(f"🚀 Workstation: {mode}")
 col_l, col_r = st.columns([2, 1])
 
 with col_l:
-    p_ready = st.text_area("Script Finale (EN):", value=st.session_state['eng_p'], height=150)
+    p_ready = st.text_area("Script (EN):", value=st.session_state['eng_p'], height=150)
     
-    if st.button(f"🔥 GENERA {mode.upper()}"):
+    if st.button(f"🔥 AVVIA GENERAZIONE"):
         if not p_ready:
-            st.error("Traduci lo script prima!")
+            st.error("Traduci lo script!")
         elif "REPLICATE_API_TOKEN" not in st.secrets:
-            st.error("Token API mancante nei Secrets!")
+            st.error("Token API mancante!")
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
+            st.session_state['media_res'] = None # Reset precedente
             
-            # --- LOGICA IMMAGINE ---
             if mode == "Immagine Singola":
-                with st.status("🖼️ Generazione Immagine con Flux...", expanded=True):
+                st.session_state['is_image'] = True
+                with st.spinner("Creazione immagine..."):
                     try:
                         out = client.run("black-forest-labs/flux-schnell", input={"prompt": p_ready})
-                        st.session_state['media_res'] = str(out[0]) if not hasattr(out[0], 'url') else out[0].url
-                        st.success("Immagine creata!")
+                        st.session_state['media_res'] = str(out[0])
+                        st.success("Immagine completata!")
                     except Exception as e:
-                        st.error(f"Errore: {e}")
-
-            # --- LOGICA VIDEO ---
+                        st.error(f"Errore Server (500): {e}. Riprova tra poco.")
+            
             else:
+                st.session_state['is_image'] = False
                 urls = []
-                with st.status("🎬 Generazione Video 15s (3 Clip)...", expanded=True) as status:
+                with st.status("🎬 Produzione Video...", expanded=True) as status:
                     for i in range(3):
                         try:
-                            status.write(f"Produzione clip {i+1}/3...")
-                            # Usiamo Luma Dream Machine: ultra-stabile
-                            prediction = client.predictions.create(
+                            status.write(f"Clip {i+1}/3...")
+                            pred = client.predictions.create(
                                 model="luma/dream-machine",
-                                input={"prompt": f"{p_ready}, cinematic movement, part {i+1}"}
+                                input={"prompt": f"{p_ready}, part {i+1}"}
                             )
-                            while prediction.status not in ["succeeded", "failed"]:
+                            while pred.status not in ["succeeded", "failed"]:
                                 time.sleep(5)
-                                prediction.reload()
+                                pred.reload()
                             
-                            if prediction.status == "succeeded":
-                                urls.append(str(prediction.output))
-                                # Pausa per Rate Limit
-                                if i < 2:
-                                    status.write("⏳ Pausa sicurezza credito (15s)...")
-                                    time.sleep(15)
+                            if pred.status == "succeeded":
+                                urls.append(str(pred.output))
+                                if i < 2: time.sleep(15) # Anti-throttle
                             else:
-                                st.error(f"Errore Clip {i+1}")
+                                st.error(f"Il server ha rifiutato la clip {i+1}")
                                 break
                         except Exception as e:
-                            st.error(f"Errore API: {e}")
+                            st.error(f"Errore API Video: {e}")
                             break
                     
                     if len(urls) >= 1:
-                        status.write("📦 Montaggio finale...")
+                        status.write("📦 Stitching...")
                         st.session_state['media_res'] = stitch_master(urls)
-                        st.balloons()
 
 with col_r:
-    st.subheader("🎞️ Anteprima Risultato")
-    if st.session_state['media_res']:
-        if mode == "Immagine Singola":
-            st.image(st.session_state['media_res'])
-            st.link_button("📥 Apri Immagine", st.session_state['media_res'])
+    st.subheader("🎞️ Anteprima")
+    res = st.session_state['media_res']
+    
+    if res:
+        if st.session_state['is_image']:
+            st.image(res)
+            st.link_button("📥 Scarica Immagine", res)
         else:
-            st.video(st.session_state['media_res'])
-            with open(st.session_state['media_res'], "rb") as f:
-                st.download_button("📥 Scarica Video", f, "video_15s.mp4")
+            # PROTEZIONE CRITICA: Controlla se il file esiste prima di aprirlo
+            if os.path.exists(res):
+                st.video(res)
+                with open(res, "rb") as f:
+                    st.download_button("📥 Scarica Video", f, "video_15s.mp4")
+            else:
+                st.warning("Il file video non è stato trovato sul server. Riprova la generazione.")
     else:
-        st.info("Il risultato apparirà qui dopo la generazione.")
+        st.info("In attesa di dati validi dal server...")
 
-st.caption("v46.0 | Hybrid Studio | Flux & Luma Integration")
+st.caption("v47.0 | Deep-Shield Edition | Safe Error Handling")
