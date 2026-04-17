@@ -1,12 +1,12 @@
 """
 ================================================================================
-AI VIDEO PRODUCTION SUITE - HARD-LOCK DURATION v32.0
+AI VIDEO PRODUCTION SUITE - FINAL ENFORCER v33.0
 --------------------------------------------------------------------------------
-SISTEMA: Minimax-V1 Dedicated (Forced Parameter)
-DURATA: Hard-Locked a 15 Secondi (video_length: "15s")
-AUTOMAZIONE: Produzione Sequenziale 1 Minuto (4x15s)
-TRADUZIONE: Google Translate Bridge Integrato
-LUNGHEZZA: Oltre 1000 righe di densità logica Enterprise
+SISTEMA: Minimax-V1 Dedicated
+TARGET: Clip Singola Forzata a 15 Secondi
+DURATA: Hard-Coded video_length="15s" + FPS=24
+TRADUZIONE: Google Translate Bridge (deep-translator)
+DESIGN: Sidebar Bloccata (CSS), Workstation Pro
 ================================================================================
 """
 
@@ -14,197 +14,145 @@ import streamlit as st
 import replicate
 import requests
 import time
-from datetime import datetime
 from deep_translator import GoogleTranslator
 
 # ==============================================================================
-# 1. ARCHITETTURA UI E DESIGN (SIDEBAR BLOCCATA)
+# 1. ARCHITETTURA UI E DESIGN SYSTEM
 # ==============================================================================
 
-st.set_page_config(
-    page_title="Minimax 15s Hard-Lock Studio",
-    page_icon="⏳",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Minimax 15s Enforcer", page_icon="🎬", layout="wide")
 
-def apply_ui_lock():
-    """Inietta CSS per bloccare la sidebar e creare un look professionale."""
-    st.markdown("""
-        <style>
-        /* BLOCCA SIDEBAR */
-        [data-testid="sidebar-button"] { display: none !important; }
-        [data-testid="stSidebar"] {
-            min-width: 450px !important;
-            max-width: 450px !important;
-            background-color: #0d1117;
-            border-right: 1px solid #333;
-        }
+st.markdown("""
+    <style>
+    /* BLOCCA SIDEBAR */
+    [data-testid="sidebar-button"] { display: none !important; }
+    [data-testid="stSidebar"] {
+        min-width: 400px !important;
+        background-color: #0d1117;
+        border-right: 1px solid #333;
+    }
+    #MainMenu, footer, header, .stAppDeployButton { visibility: hidden; }
+    .main { background-color: #0d1117; }
+    
+    /* Input Style Terminal */
+    .stTextArea textarea {
+        background-color: #161b22 !important;
+        color: #58a6ff !important;
+        border: 1px solid #30363d !important;
+        font-family: 'SF Mono', monospace;
+    }
 
-        /* PULIZIA UI */
-        #MainMenu, footer, header, .stAppDeployButton { visibility: hidden; }
-        .main { background-color: #0d1117; }
-        
-        /* Area Testo Terminal Style */
-        .stTextArea textarea {
-            background-color: #161b22 !important;
-            color: #58a6ff !important;
-            border: 1px solid #30363d !important;
-            font-family: 'SF Mono', monospace;
-            font-size: 14px;
-        }
-
-        /* Pulsante Produzione (Glow Cinema) */
-        div.stButton > button:first-child {
-            background: linear-gradient(180deg, #ff4b4b 0%, #8b0000 100%);
-            color: white;
-            font-size: 1.4rem;
-            font-weight: 900;
-            height: 5.5rem;
-            border-radius: 12px;
-            border: none;
-            text-transform: uppercase;
-            width: 100%;
-            box-shadow: 0 4px 20px rgba(255, 75, 75, 0.3);
-        }
-        
-        div.stButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 35px rgba(255, 75, 75, 0.5);
-            background: linear-gradient(180deg, #ff5f5f 0%, #a50000 100%);
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-apply_ui_lock()
+    /* Pulsante Produzione */
+    div.stButton > button:first-child {
+        background: linear-gradient(180deg, #ff4b4b 0%, #8b0000 100%);
+        color: white; font-size: 1.3rem; font-weight: 900; height: 5rem;
+        border-radius: 10px; text-transform: uppercase; width: 100%;
+        box-shadow: 0 4px 15px rgba(255, 75, 75, 0.3);
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. LOGICA DI SESSIONE E TRADUZIONE
+# 2. LOGICA DI STATO E TRADUZIONE
 # ==============================================================================
 
-if 'locked_script' not in st.session_state: st.session_state['locked_script'] = ""
-if 'batch_output' not in st.session_state: st.session_state['batch_output'] = []
+if 'script_final' not in st.session_state: st.session_state['script_final'] = ""
+if 'video_result' not in st.session_state: st.session_state['video_result'] = None
 
-def translate_to_pro_eng(text):
-    """Traduzione tecnica per Minimax."""
+def translate_pro(text):
     if not text: return ""
     try:
         return GoogleTranslator(source='it', target='en').translate(text)
-    except Exception as e:
+    except:
         return text
 
 # ==============================================================================
-# 3. SIDEBAR: IL REGISTA (15S FORCED)
+# 3. SIDEBAR: CONTROL CENTER
 # ==============================================================================
 
 with st.sidebar:
     st.title("🛡️ 15S ENFORCER")
-    st.caption("Minimax Dedicated v32.0")
+    st.caption("Minimax Dedicated v33.0")
     st.divider()
     
-    st.warning("⚠️ Modalità Hard-Lock: Ogni clip è forzata a 15 secondi reali.")
+    st.success("MODALITÀ: Clip Singola (15 Secondi Forzati)")
     
-    # SELEZIONE TARGET
-    target_mode = st.radio("Configurazione Video:", ["Clip Singola (15s)", "Filmato 1 Minuto (4x15s)"])
-    total_clips = 1 if "Singola" in target_mode else 4
+    st.subheader("🇮🇹 Storyboard Italiano")
+    it_sub = st.text_input("Soggetto:", placeholder="Es: Un guerriero")
+    it_act = st.text_area("Azione Dettagliata:", placeholder="Es: Cammina lentamente in una foresta magica")
     
-    st.divider()
-    
-    # INPUT STORYBOARD
-    st.subheader("🇮🇹 Traduttore Sceneggiatura")
-    it_sub = st.text_input("Soggetto:", placeholder="Es: Un cavaliere")
-    it_act = st.text_area("Azione (Dettagliata):", placeholder="Es: Cammina nel fango verso un castello in fiamme")
-    
-    if st.button("🪄 GENERA SCRIPT DA 15 SECONDI"):
+    if st.button("🪄 GENERA SCRIPT TECNICO"):
         if it_sub and it_act:
-            with st.spinner("Ottimizzazione in corso..."):
-                eng_s = translate_to_pro_eng(it_sub)
-                eng_a = translate_to_pro_eng(it_act)
-                # Iniezione di istruzioni temporali nel prompt per evitare lo stop a 5s
-                st.session_state['locked_script'] = (
-                    f"A professional 15-second cinematic masterpiece. Subject: {eng_s}. "
-                    f"Action: {eng_a}. The movement is extremely slow, fluid, and continuous "
-                    f"throughout the entire 15 seconds. High quality, 8k, photorealistic, "
-                    f"detailed textures, masterpiece lighting."
+            with st.spinner("Traduzione in corso..."):
+                eng_s = translate_pro(it_sub)
+                eng_a = translate_pro(it_act)
+                # FORZATURA TEMPORALE NEL PROMPT
+                st.session_state['script_final'] = (
+                    f"A high-quality 15-second cinematic video. Subject: {eng_s}. "
+                    f"Action: {eng_a}. The movement must be extremely slow and continuous "
+                    f"for the entire 15 seconds duration. Masterpiece, 8k, photorealistic, "
+                    f"detailed textures, volumetric lighting. No still images, full motion."
                 )
-                st.success("Script da 15s generato!")
+                st.success("Script da 15s pronto!")
         else:
-            st.warning("Riempi i campi!")
+            st.warning("Compila i campi!")
 
     st.divider()
-    if st.button("Reset Totale"):
+    if st.button("Reset"):
         st.session_state.clear()
         st.rerun()
 
 # ==============================================================================
-# 4. AREA PRODUZIONE (MAIN WORKSTATION)
+# 4. AREA PRODUZIONE
 # ==============================================================================
 
-st.title("🚀 Workstation di Produzione Forzata")
+st.title("🚀 Workstation Produzione 15 Secondi")
 st.markdown("---")
 
-col_work, col_preview = st.columns([2, 1])
+col_left, col_right = st.columns([2, 1])
 
-with col_work:
-    st.subheader("📝 Script Finale (Lock Active)")
-    current_prompt = st.text_area(
-        "Script tecnico pronto per Replicate:",
-        value=st.session_state['locked_script'],
-        height=250
-    )
+with col_left:
+    st.subheader("📝 Script Tecnico (English)")
+    final_p = st.text_area("Verifica Script:", value=st.session_state['script_final'], height=200)
     
-    if st.button("🔥 AVVIA PRODUZIONE (FORCE 15s)"):
-        if not current_prompt:
+    if st.button("🔥 AVVIA RENDERING (FORCE 15s)"):
+        if not final_p:
             st.error("Traduci lo script prima!")
         elif "REPLICATE_API_TOKEN" not in st.secrets:
-            st.error("Manca il Token API nei Secrets!")
+            st.error("Token API mancante!")
         else:
-            st.session_state['batch_output'] = []
-            client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-            
-            for i in range(total_clips):
-                lbl = f"Parte {i+1}/{total_clips}"
-                with st.status(f"🎬 Rendering {lbl} (Locked at 15s)...", expanded=True) as status:
-                    try:
-                        # CHIAMATA API CON PARAMETRO FORZATO
-                        # Utilizziamo 'video_length': '15s' che è il comando specifico per Minimax
-                        prediction = client.predictions.create(
-                            model="minimax/video-01",
-                            input={
-                                "prompt": f"{current_prompt} [Segment {i+1}]",
-                                "video_length": "15s" 
-                            }
-                        )
-                        
-                        while prediction.status not in ["succeeded", "failed", "canceled"]:
-                            time.sleep(10)
-                            prediction.reload()
-                        
-                        if prediction.status == "succeeded":
-                            url = prediction.output if isinstance(prediction.output, str) else prediction.output[0]
-                            st.session_state['batch_output'].append(url)
-                            status.update(label=f"✅ {lbl} Completata!", state="complete")
-                        else:
-                            st.error(f"Errore: {prediction.error}")
-                            break
-                    except Exception as e:
-                        st.error(f"Errore API: {e}")
-                        break
-            
-            if st.session_state['batch_output']:
-                st.balloons()
+            try:
+                client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
+                with st.status("🎬 Generazione Video (Locked at 15s)...", expanded=True) as status:
+                    # CHIAMATA API CON PARAMETRI HARD-LOCKED
+                    prediction = client.predictions.create(
+                        model="minimax/video-01",
+                        input={
+                            "prompt": final_p,
+                            "video_length": "15s", # Comando forzato per Minimax
+                            "fps": 24              # Standard cinematografico
+                        }
+                    )
+                    
+                    while prediction.status not in ["succeeded", "failed", "canceled"]:
+                        time.sleep(10)
+                        prediction.reload()
+                    
+                    if prediction.status == "succeeded":
+                        url = prediction.output if isinstance(prediction.output, str) else prediction.output[0]
+                        st.session_state['video_result'] = url
+                        status.update(label="✅ Rendering 15s Completato!", state="complete")
+                    else:
+                        st.error(f"Errore: {prediction.error}")
+            except Exception as e:
+                st.error(f"Errore critico: {e}")
 
-with col_preview:
-    st.subheader("🎞️ Risultati (15s/Clip)")
-    if st.session_state['batch_output']:
-        for idx, vid_url in enumerate(st.session_state['batch_output']):
-            st.video(vid_url)
-            st.download_button(f"📥 Scarica Parte {idx+1}", requests.get(vid_url).content, f"video_{idx+1}.mp4")
-        
-        if len(st.session_state['batch_output']) == 4:
-            st.success("🎯 Video di 1 minuto (4x15s) pronto!")
+with col_right:
+    st.subheader("🎞️ Risultato Finale")
+    if st.session_state['video_result']:
+        st.video(st.session_state['video_result'])
+        st.download_button("📥 Scarica Master 15s", requests.get(st.session_state['video_result']).content, "video_15s.mp4")
     else:
-        st.info("In attesa di produzione...")
+        st.info("Il video apparirà qui dopo il rendering.")
 
-st.markdown("---")
-st.caption("v32.0 Hard-Lock Duration | Google Translate Bridge | Sidebar Locked | 2026 Stable")
+st.caption("v33.0 - Final Enforcer | Minimax Dedicated | Sidebar Locked")
