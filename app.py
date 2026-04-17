@@ -99,23 +99,22 @@ with st.sidebar:
                     t = GoogleTranslator(source='it', target='en')
                     scene_en = t.translate(desc_it)
                     
-                    # REGOLE TESTO (Forzatura massima con delimitatori)
+                    # CORREZIONE TIPOGRAFICA: Forzatura carattere per carattere
                     text_block = []
                     if use_t and t_val:
-                        text_block.append(f"STRICTLY PRINT the title text \"\"\"{t_val}\"\"\" in big letters at the {t_pos}.")
+                        text_block.append(f"The cover must display the exact text \"{t_val}\" clearly as the main title at the {t_pos}.")
                     if use_a and a_val:
-                        text_block.append(f"STRICTLY PRINT the author name \"\"\"{a_val}\"\"\" at the {a_pos}.")
+                        text_block.append(f"The cover must display the exact author name \"{a_val}\" clearly at the {a_pos}.")
                     
-                    # Composizione Prompt finale
+                    # Composizione Prompt finale con istruzioni di controllo ortografico (Spell-check enforcement)
                     prompt = (
-                        f"{' '.join(text_block)} "
-                        f"Background: A professional ebook cover with {scene_en}. "
-                        f"Style: {ATMOSFERE[genere]} combined with {MODALITA_RENDERING[tipo_render]}. "
-                        f"Rules: Background must be simple or slightly out of focus behind the text areas to ensure absolute legibility. No spelling errors. "
-                        f"Do not write the word '{genere}' on the cover."
+                        f"TYPOGRAPHY OVERLAY: {' '.join(text_block)} "
+                        f"BACKGROUND: A professional ebook cover with {scene_en}. "
+                        f"ART STYLE: {ATMOSFERE[genere]} combined with {MODALITA_RENDERING[tipo_render]}. "
+                        f"MANDATORY RULES: 1. Render the text exactly as written in quotes. 2. No extra characters or invented letters. 3. High contrast between text and background. 4. Do not write the word '{genere}' on the image."
                     )
                     st.session_state['v83_prompt'] = prompt
-                    st.success("Prompt creato!")
+                    st.success("Prompt creato con correzione tipografica!")
                 except Exception as e:
                     st.error(f"Errore traduzione: {e}")
 
@@ -157,7 +156,6 @@ with col_r:
     if st.session_state['v83_res']:
         st.image(st.session_state['v83_res'], use_container_width=True)
         st.divider()
-        # Download sicuro
         try:
             response = requests.get(st.session_state['v83_res'])
             st.download_button("📥 Scarica Copertina HD", response.content, "cover.jpg", "image/jpeg")
