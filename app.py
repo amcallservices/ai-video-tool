@@ -2,67 +2,97 @@ import streamlit as st
 import replicate
 import os
 import requests
+import time
 
-# Configurazione della pagina
-st.set_page_config(page_title="AI Video Generator", page_icon="🎥")
+# 1. Configurazione della pagina (deve essere la prima istruzione Streamlit)
+st.set_page_config(
+    page_title="AI Video Generator", 
+    page_icon="🎥",
+    layout="centered"
+)
 
-st.title("🎥 Generatore Video AI per Clienti")
-st.subheader("Trasforma le tue idee in clip cinematografiche")
+# 2. Gestione dell'autenticazione tramite Secrets
+# Assicurati di aver impostato REPLICATE_API_TOKEN nei Secrets di Streamlit Cloud
+if "REPLICATE_API_TOKEN" in st.secrets:
+    replicate_api_token = st.secrets["REPLICATE_API_TOKEN"]
+else:
+    st.error("ERRORE: API Token non trovato! Vai in Settings > Secrets e aggiungi REPLICATE_API_TOKEN.")
+    st.stop()
 
-# --- Configurazione API ---
-# In produzione, useremo st.secrets. In locale, puoi usare una stringa o variabile d'ambiente.
-replicate_api_token = st.sidebar.text_input("Inserisci Replicate API Token", type="password")
-os.environ["REPLICATE_API_TOKEN"] = replicate_api_token
+# Inizializza il client Replicate
+client = replicate.Client(api_token=replicate_api_token)
 
-# --- Interfaccia Utente ---
-with st.form("video_form"):
-    prompt = st.text_area(
-        "Descrivi il video che vuoi generare:",
-        placeholder="Esempio: Un astronauta che cammina in una foresta aliena bioluminescente, 4k, stile cinematografico..."
+# 3. Interfaccia Grafica
+st.title("🎥 AI Video Studio")
+st.markdown("Inserisci una descrizione testuale e l'intelligenza artificiale genererà un video per te.")
+
+# Sidebar per informazioni e parametri
+with st.sidebar:
+    st.header("Impostazioni")
+    durata = st.select_slider(
+        "Qualità / Numero Frame",
+        options=[41, 81, 121],
+        value=81,
+        help="Più frame rendono il video più lungo ma la generazione sarà più lenta."
+    )
+    st.info("Utilizziamo il modello CogVideoX-5b, ottimizzato per velocità e qualità.")
+
+# Form principale
+with st.form("my_form"):
+    prompt_utente = st.text_area(
+        "Cosa vuoi vedere nel video?",
+        placeholder="Esempio: Un gatto spaziale che fluttua in una stazione orbitale, stile pixel art, luci neon..."
     )
     
-    # Parametri aggiuntivi opzionali
-    durata = st.select_slider("Qualità/Durata (Frames)", options=[41, 81, 161], value=81)
+    # Trucco per migliorare il prompt automaticamente
+    improve_prompt = st.checkbox("Migliora automaticamente il prompt (aggiunge dettagli cinematografici)", value=True)
     
-    submit_button = st.form_submit_button("Genera Video")
+    submitted = st.form_submit_button("Genera Video")
 
-# --- Logica di Generazione ---
-if submit_button:
-    if not replicate_api_token:
-        st.error("Per favore, inserisci il tuo API Token nella barra laterale!")
-    elif not prompt:
-        st.warning("Inserisci una descrizione prima di continuare.")
+# 4. Logica di Generazione
+if submitted:
+    if not prompt_utente:
+        st.warning("Per favore, inserisci una descrizione.")
     else:
         try:
-            with st.spinner("L'intelligenza artificiale sta creando il tuo video... Potrebbe volerci un minuto."):
-                # Chiamata a Replicate (Modello CogVideoX-5b)
-                output = replicate.run(
+            # Raffinamento del prompt
+            final_prompt = prompt_utente
+            if improve_prompt:
+                final_prompt = f"{prompt_utente}, highly detailed, cinematic lighting, 4k resolution, smooth motion, masterpiece."
+
+            with st.spinner("🎬 L'AI sta lavorando... Il video sarà pronto tra circa 60-90 secondi."):
+                # Chiamata al modello
+                # Modello: CogVideoX-5b (ottimo rapporto qualità/costo)
+                output = client.run(
                     "lucataco/cogvideox-5b:096504958319f35315570072b0c3603d1c4728511d739c3629471f28b2488737",
                     input={
-                        "prompt": prompt,
+                        "prompt": final_prompt,
                         "num_frames": durata,
                         "fps": 8,
                         "guidance_scale": 6
                     }
                 )
-                
+
+                # Gestione dell'output (solitamente è un URL diretto)
                 video_url = output if isinstance(output, str) else output[0]
-                
-                # Visualizzazione Video
-                st.success("Video generato con successo!")
+
+                # Visualizzazione del risultato
+                st.success("✨ Video generato!")
                 st.video(video_url)
-                
-                # Bottone per il download
-                video_data = requests.get(video_url).content
+
+                # Download button
+                video_bytes = requests.get(video_url).content
                 st.download_button(
-                    label="Scarica Video MP4",
-                    data=video_data,
-                    file_name="video_ai.mp4",
+                    label="⬇️ Scarica il video",
+                    data=video_bytes,
+                    file_name="video_ai_generato.mp4",
                     mime="video/mp4"
                 )
-                
-        except Exception as e:
-            st.error(f"Si è verificato un errore durante la generazione: {e}")
 
-# --- Footer ---
-st.info("Nota: Ogni generazione consuma crediti sul tuo account Replicate.")
+        except Exception as e:
+            st.error(f"Si è verificato un errore: {str(e)}")
+            st.info("Suggerimento: Controlla che il tuo account Replicate abbia credito sufficiente.")
+
+# Footer
+st.markdown("---")
+st.caption("Creato con Streamlit + Replicate API")
