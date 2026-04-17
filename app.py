@@ -7,137 +7,158 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. DESIGN E CONFIGURAZIONE UI
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer Pro v79", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v80", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
-    .stApp {{ background-color: #0d1117; color: #c9d1d9; }}
-    [data-testid="stSidebar"] {{ 
+    .stApp { background-color: #0d1117; color: #c9d1d9; }
+    [data-testid="stSidebar"] { 
         background-color: #161b22; 
         border-right: 1px solid #30363d; 
         min-width: 400px !important; 
-    }}
-    #MainMenu, footer, header {{ visibility: hidden; }}
+    }
+    #MainMenu, footer, header { visibility: hidden; }
     
-    .stTextInput input, .stTextArea textarea, .stSelectbox div {{
+    .stTextInput input, .stTextArea textarea, .stSelectbox div {
         background-color: #0d1117 !important;
         color: #58a6ff !important;
         border: 1px solid #30363d !important;
-    }}
+    }
 
-    div.stButton > button:first-child {{
-        background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
-        color: black; font-size: 1.2rem; font-weight: 800; height: 4rem;
-        border-radius: 12px; width: 100%; border: none; box-shadow: 0 4px 15px rgba(217, 119, 6, 0.4);
-    }}
+    /* Pulsante Genera */
+    div.stButton > button:first-child {
+        background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+        color: white; font-size: 1.2rem; font-weight: 800; height: 4rem;
+        border-radius: 12px; width: 100%; border: none; box-shadow: 0 4px 15px rgba(35, 134, 54, 0.4);
+    }
+    
+    /* Pulsante Reset */
+    .reset-btn button {
+        background-color: #30363d !important;
+        color: #f85149 !important;
+        border: 1px solid #f85149 !important;
+        font-weight: bold !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. DIZIONARIO STILI EDITORIALI
+# 2. LOGICA DI STILE INVISIBILE (MAPPATURA EN)
 # ==============================================================================
-STILI_EDITORIALI = {
-    "Saggio Scientifico": "Academic Non-Fiction, professional white space, high legibility.",
-    "Quiz Scientifico": "Educational Quiz, vibrant colors, clear bold labels.",
-    "Manuale Tecnico": "Technical Guide, blueprint style, high-contrast schematic.",
-    "Business": "Corporate Luxury, clean minimalist background, elegant gold/white text.",
-    "Romanzo Rosa": "Romance Novel, dreamlike but with clear readable typography.",
-    "Thriller": "Suspense Thriller, noir contrast, glowing text on dark background.",
-    "Fantasy": "Epic Fantasy, ornate but sharp readable fonts, magical clarity.",
-    "Fantascienza": "Sci-Fi, futuristic neon typography, sharp tech overlays.",
-    "Manuale Psicologico": "Self-Help, clean zen background, airy and legible layout.",
-    "Biography": "Biography, classic centered typography, high-end portrait lighting."
+# Le etichette IT non vengono mai inviate al modello per evitare scritte errate
+STILI_INVISIBILI = {
+    "Saggio Scientifico": "high-end academic non-fiction, clean professional aesthetic",
+    "Quiz Scientifico": "educational quiz style, vibrant and dynamic background",
+    "Manuale Tecnico": "industrial technical guide, blueprint schematic aesthetic",
+    "Business": "luxury corporate success style, gold and navy accents",
+    "Romanzo Rosa": "ethereal romance, soft lighting, pastel emotional tones",
+    "Thriller": "gritty suspense thriller, noir high-contrast shadows",
+    "Fantasy": "epic fantasy world, magical atmospheric lighting",
+    "Fantascienza": "cyberpunk sci-fi, futuristic tech HUD elements",
+    "Manuale Psicologico": "serene psychology self-help, zen minimalist balance",
+    "Biografia": "classic biography, elegant portraiture, vintage paper textures"
 }
 
 # ==============================================================================
-# 3. SIDEBAR: CONTROLLI PER RISALTO TESTO
+# 3. SIDEBAR: CONTROLLI E RESET
 # ==============================================================================
 with st.sidebar:
-    st.title("📚 DESIGNER v79")
-    st.caption("Focus: High Visibility Typography")
+    st.title("📕 DESIGNER v80")
+    st.caption("Clean Editorial Engine")
+    
+    # PULSANTE RESET
+    st.markdown('<div class="reset-btn">', unsafe_allow_html=True)
+    if st.button("🔄 NUOVO PROGETTO / RESET"):
+        st.session_state.clear()
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
     st.divider()
     
-    genere_it = st.selectbox("Categoria:", list(STILI_EDITORIALI.keys()))
+    # Selezione Categoria (Usata solo per lo stile, non per il testo)
+    genere_it = st.selectbox("Atmosfera Editoriale:", list(STILI_INVISIBILI.keys()))
     
     st.divider()
     
-    # Titolo in evidenza
-    use_t = st.checkbox("Metti in rilievo Titolo", value=True)
-    t_val = st.text_input("Testo Titolo:", "PATENTE SUBITO") if use_t else ""
+    # Input Titolo
+    use_t = st.checkbox("Abilita Titolo", value=True)
+    t_val = st.text_input("Titolo:", "PATENTE SUBITO") if use_t else ""
     t_pos = st.selectbox("Posizione Titolo:", ["top", "center", "bottom"]) if use_t else ""
 
-    # Autore in evidenza
-    use_a = st.checkbox("Metti in rilievo Autore", value=True)
-    a_val = st.text_input("Testo Autore:", "ANTONINO STRAMERA") if use_a else ""
+    # Input Autore
+    use_a = st.checkbox("Abilita Autore", value=True)
+    a_val = st.text_input("Nome Autore:", "ANTONINO STRAMERA") if use_a else ""
     a_pos = st.selectbox("Posizione Autore:", ["top", "center", "bottom"], index=2) if use_a else ""
 
     st.divider()
-    desc_it = st.text_area("Descrizione Scena (IT):", placeholder="Descrivi lo sfondo della copertina...")
+    desc_it = st.text_area("Scena Visiva (IT):", placeholder="Descrivi lo sfondo...")
     
-    if st.button("🪄 GENERA ARCHITETTURA"):
+    if st.button("🪄 GENERA ARCHITETTURA PROMPT"):
         if desc_it:
-            with st.spinner("Ottimizzazione contrasto..."):
+            with st.spinner("Compilazione prompt pulito..."):
                 t = GoogleTranslator(source='it', target='en')
                 scene_en = t.translate(desc_it)
-                stile_en = STILI_EDITORIALI.get(genere_it)
+                stile_en = STILI_INVISIBILI.get(genere_it)
                 
-                # REGOLE DI RILIEVO (ULTRA CONTRAST LOGIC)
+                # REGOLE DI RILIEVO E PULIZIA
                 text_rules = []
                 if use_t and t_val:
-                    text_rules.append(f"The title \"\"\"{t_val}\"\"\" must be the main focal point, using massive bold 3D typography at the {t_pos}. Use high contrast colors against the background.")
+                    text_rules.append(f"STRICTLY PRINT the title \"\"\"{t_val}\"\"\" in massive 3D bold letters at the {t_pos}.")
                 if use_a and a_val:
-                    text_rules.append(f"The author name \"\"\"{a_val}\"\"\" must be extremely sharp and visible at the {a_pos}, isolated on a clean part of the image to ensure perfect readability.")
+                    text_rules.append(f"STRICTLY PRINT the author name \"\"\"{a_val}\"\"\" at the {a_pos} in a clean, sharp, visible font.")
                 
+                # Costruzione Prompt Finale (Nessun riferimento alla parola IT del genere)
                 prompt = (
-                    f"A high-end book cover design for a {stile_en}. "
-                    f"Background: {scene_en}. "
+                    f"A professional ebook cover. Visual mood: {stile_en}. "
+                    f"Background scene: {scene_en}. "
                     f"TYPOGRAPHY OVERLAY: {' '.join(text_rules)} "
-                    f"VISUAL HIERARCHY: Background elements must be slightly out of focus or simplified behind the text areas to make the typography pop. "
-                    f"CRITICAL: Exact spelling for \"\"\"{t_val}\"\"\" and \"\"\"{a_val}\"\"\". No overlapping with background details. "
-                    f"8k, cinematic lighting, sharp text rendering, professional publishing quality."
+                    f"VISUAL HIERARCHY: Simplify background details behind the text areas to ensure absolute legibility. "
+                    f"CRITICAL: Do NOT write the word '{genere_it}' or the category name. Only print the provided title and author. "
+                    f"8k resolution, cinematic lighting, sharp typography, high contrast."
                 )
                 
-                st.session_state['v79_prompt'] = prompt
-                st.success("Prompt ad alta visibilità generato!")
+                st.session_state['v80_prompt'] = prompt
+                st.success("Concept editoriale pronto!")
 
 # ==============================================================================
-# 4. PRODUZIONE E ANTEPRIMA
+# 4. WORKSTATION DI PRODUZIONE
 # ==============================================================================
-st.title("🎨 Workstation v79 - High Contrast")
+st.title("🎨 Workstation v80 - No-Genre Edition")
 col_l, col_r = st.columns([1.2, 1])
 
-if 'v79_prompt' not in st.session_state: st.session_state['v79_prompt'] = ""
-if 'v79_res' not in st.session_state: st.session_state['v79_res'] = None
+if 'v80_prompt' not in st.session_state: st.session_state['v80_prompt'] = ""
+if 'v80_res' not in st.session_state: st.session_state['v80_res'] = None
 
 with col_l:
-    p_edit = st.text_area("Prompt Tecnico (EN):", value=st.session_state['v79_prompt'], height=250)
+    p_edit = st.text_area("Prompt Tecnico (EN):", value=st.session_state['v80_prompt'], height=250)
     
-    if st.button("🔥 GENERA COPERTINA"):
+    if st.button("🔥 GENERA COPERTINA HD"):
         if not p_edit:
-            st.error("Configura il prompt nella sidebar!")
+            st.error("Configura il progetto nella sidebar!")
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
             try:
-                with st.spinner("Rendering Flux 1.1 Pro (Ultra-Legibility Mode)..."):
+                with st.spinner("L'IA sta disegnando..."):
                     out = client.run(
                         "black-forest-labs/flux-1.1-pro",
                         input={
                             "prompt": p_edit,
                             "aspect_ratio": "2:3",
-                            "output_format": "jpg",
-                            "output_quality": 100
+                            "output_format": "jpg"
                         }
                     )
-                    st.session_state['v79_res'] = str(out)
+                    st.session_state['v80_res'] = str(out)
                     st.balloons()
             except Exception as e:
                 st.error(f"Errore API: {e}")
 
 with col_r:
-    st.subheader("🖼️ Risultato ad Alto Rilievo")
-    if st.session_state['v79_res']:
-        st.image(st.session_state['v79_res'], use_container_width=True)
+    st.subheader("🖼️ Anteprima Finale")
+    if st.session_state['v80_res']:
+        st.image(st.session_state['v80_res'], use_container_width=True)
         st.divider()
-        st.download_button("📥 Scarica JPG", requests.get(st.session_state['v79_res']).content, "cover_high_res.jpg")
+        st.download_button("📥 Scarica JPG", requests.get(st.session_state['v80_res']).content, "cover_clean.jpg")
     else:
         st.info("In attesa di produzione...")
+
+st.caption("v80.0 - Invisible Genre Style | Global Reset Button | Flux 1.1 Pro")
