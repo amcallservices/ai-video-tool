@@ -6,62 +6,65 @@ import time
 # 1. Configurazione Pagina
 st.set_page_config(page_title="AI Video Studio", page_icon="🎬")
 
-# 2. Setup Client Protetto
+# 2. Controllo Token nei Secrets
 if "REPLICATE_API_TOKEN" in st.secrets:
-    client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
+    # Configurazione globale del token per la libreria replicate
+    replicate.api_key = st.secrets["REPLICATE_API_TOKEN"]
 else:
-    st.error("Token non trovato nei Secrets di Streamlit!")
+    st.error("Token non trovato! Vai in Settings > Secrets e aggiungi REPLICATE_API_TOKEN")
     st.stop()
 
-st.title("🎬 AI Video Studio Pro")
+st.title("🎬 AI Video Studio")
+st.write("Genera video di alta qualità in pochi minuti.")
 
+# 3. Input Utente
 with st.form("video_form"):
-    prompt = st.text_area("Cosa vuoi creare?", placeholder="Un'auto futuristica sfreccia in una città neon...")
-    submit = st.form_submit_button("Genera Video")
+    prompt = st.text_area("Descrizione del video (in inglese):", 
+                         placeholder="A majestic lion walking through a futuristic neon city, 4k, cinematic...")
+    submit = st.form_submit_button("Genera Video ✨")
 
 if submit:
     if not prompt:
-        st.warning("Inserisci una descrizione!")
+        st.warning("Per favore, inserisci una descrizione.")
     else:
-        # Creiamo un contenitore vuoto per i messaggi di stato
-        status_container = st.empty()
+        status_placeholder = st.empty()
         
         try:
-            status_container.info("⏳ Richiesta inviata ai server... (Fase 1/3)")
+            status_placeholder.info("🚀 Connessione ai server di generazione...")
             
-            # Tentativo di generazione con Luma Dream Machine
-            # Usiamo la versione con l'ID più recente e stabile per evitare ambiguità
-            prediction = client.predictions.create(
-                version="a719512991a10688019446d3e75e95a9b718991f8936631b09b555818ca91e9f", # Luma Dream Machine v1
+            # Usiamo il modello Minimax (video-01) che è molto stabile
+            # Non usiamo la versione specifica per evitare l'errore 422
+            prediction = replicate.predictions.create(
+                model="minimax/video-01",
                 input={"prompt": prompt}
             )
 
-            # Fase di monitoraggio (Poling)
-            # Invece di client.run, usiamo un loop per evitare timeout del server
+            # Loop di monitoraggio
             while prediction.status not in ["succeeded", "failed", "canceled"]:
-                status_container.info(f"🎬 L'AI sta lavorando... Stato attuale: {prediction.status}")
-                time.sleep(5) # Attendi 5 secondi prima di ricontrollare
-                prediction.reload() # Aggiorna i dati della predizione
+                status_placeholder.info(f"⏳ L'AI sta creando il video... Stato: {prediction.status}")
+                time.sleep(10) # Aspettiamo 10 secondi tra un controllo e l'altro
+                prediction.reload()
 
             if prediction.status == "succeeded":
+                # L'output di Minimax è direttamente l'URL del video
                 video_url = prediction.output
-                status_container.success("✅ Video generato con successo!")
+                status_placeholder.success("✅ Video completato!")
                 st.video(video_url)
                 
-                # Scaricamento
-                video_bytes = requests.get(video_url).content
-                st.download_button("💾 Scarica Video", data=video_bytes, file_name="video_ai.mp4")
+                # Download
+                video_content = requests.get(video_url).content
+                st.download_button("💾 Scarica Video MP4", data=video_content, file_name="video_generato.mp4")
             else:
-                st.error(f"La generazione è fallita con stato: {prediction.status}")
+                st.error(f"Errore nella generazione: {prediction.error}")
 
         except Exception as e:
-            if "500" in str(e):
-                st.error("🚨 Errore 500: I server di Replicate sono sovraccarichi.")
-                st.info("Riprova tra 30 secondi: è un problema temporaneo della loro infrastruttura.")
+            if "422" in str(e):
+                st.error("Errore 422: Problema di permessi o versione.")
+                st.info("👉 Soluzione: Vai su https://replicate.com/minimax/video-01 e clicca 'Run' una volta per accettare i termini d'uso.")
             elif "402" in str(e):
-                st.error("💸 Credito esaurito su Replicate! Controlla il tuo piano di fatturazione.")
+                st.error("Credito insufficiente su Replicate. Carica almeno 5$ per continuare.")
             else:
-                st.error(f"Errore imprevisto: {e}")
+                st.error(f"Si è verificato un errore: {e}")
 
 st.markdown("---")
-st.caption("Se l'errore 500 persiste, prova a cambiare leggermente il prompt o attendi qualche minuto.")
+st.caption("Tip: Se il video non appare subito, ricarica la pagina tra qualche istante.")
