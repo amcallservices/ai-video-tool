@@ -5,45 +5,40 @@ import os
 from deep_translator import GoogleTranslator
 
 # ==============================================================================
-# 1. DESIGN E CONFIGURAZIONE UI
+# 1. CONFIGURAZIONE E DESIGN
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v81", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v82", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
     .stApp { background-color: #0d1117; color: #c9d1d9; }
-    [data-testid="stSidebar"] { 
-        background-color: #161b22; 
-        border-right: 1px solid #30363d; 
-        min-width: 400px !important; 
-    }
-    #MainMenu, footer, header { visibility: hidden; }
+    [data-testid="stSidebar"] { background-color: #161b22; border-right: 1px solid #30363d; min-width: 400px !important; }
+    header, footer, .stAppDeployButton { display: none !important; }
     
     .stTextInput input, .stTextArea textarea, .stSelectbox div {
-        background-color: #0d1117 !important;
-        color: #58a6ff !important;
-        border: 1px solid #30363d !important;
+        background-color: #0d1117 !important; color: #58a6ff !important; border: 1px solid #30363d !important;
     }
-
-    /* Pulsante Genera */
     div.stButton > button:first-child {
         background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
-        color: white; font-size: 1.2rem; font-weight: 800; height: 4rem;
-        border-radius: 12px; width: 100%; border: none; box-shadow: 0 4px 15px rgba(35, 134, 54, 0.4);
+        color: white; font-size: 1.2rem; font-weight: 800; height: 4rem; border-radius: 12px; border: none;
     }
-    
-    /* Pulsante Reset */
     .reset-btn button {
-        background-color: #30363d !important;
-        color: #f85149 !important;
-        border: 1px solid #f85149 !important;
-        font-weight: bold !important;
+        background-color: #30363d !important; color: #f85149 !important; border: 1px solid #f85149 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. LOGICA DI STILE INVISIBILE
+# 2. LOGICA DI RESET ATOMICO
+# ==============================================================================
+def atomic_reset():
+    """Cancella ogni traccia di dati dalla sessione e resetta i widget."""
+    for key in st.session_state.keys():
+        del st.session_state[key]
+    st.rerun()
+
+# ==============================================================================
+# 3. SIDEBAR: INPUT E CONTROLLI
 # ==============================================================================
 STILI_INVISIBILI = {
     "Saggio Scientifico": "high-end academic non-fiction, professional layout",
@@ -58,100 +53,89 @@ STILI_INVISIBILI = {
     "Biografia": "classic biography, elegant portraiture, vintage textures"
 }
 
-# ==============================================================================
-# 3. SIDEBAR: LOGICA DI FORZATURA TESTO
-# ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v81")
-    st.caption("Typography Enforcement Mode")
+    st.title("📕 DESIGNER v82")
     
-    if st.button("🔄 NUOVO PROGETTO / RESET"):
-        st.session_state.clear()
-        st.rerun()
+    if st.button("🔄 NUOVO PROGETTO / RESET", key="reset_button", help="Cancella tutto e ricomincia"):
+        atomic_reset()
     
     st.divider()
-    genere_it = st.selectbox("Atmosfera Editoriale:", list(STILI_INVISIBILI.keys()))
+    genere_it = st.selectbox("Atmosfera Editoriale:", list(STILI_INVISIBILI.keys()), key="genere")
     
     st.divider()
     
-    # Checkbox e Input
-    use_t = st.checkbox("FORZA STAMPA TITOLO", value=True)
-    t_val = st.text_input("Titolo:", "PATENTE SUBITO") if use_t else ""
-    t_pos = st.selectbox("Posizione Titolo:", ["top", "center", "bottom"]) if use_t else ""
+    # Checkbox per attivazione testo
+    use_t = st.checkbox("FORZA STAMPA TITOLO", value=True, key="use_t")
+    t_val = st.text_input("Titolo:", value="PATENTE SUBITO", key="t_val") if use_t else ""
+    t_pos = st.selectbox("Posizione Titolo:", ["top", "center", "bottom"], key="t_pos") if use_t else ""
 
-    use_a = st.checkbox("FORZA STAMPA AUTORE", value=True)
-    a_val = st.text_input("Autore:", "ANTONINO STRAMERA") if use_a else ""
-    a_pos = st.selectbox("Posizione Autore:", ["top", "center", "bottom"], index=2) if use_a else ""
+    use_a = st.checkbox("FORZA STAMPA AUTORE", value=True, key="use_a")
+    a_val = st.text_input("Autore:", value="ANTONINO STRAMERA", key="a_val") if use_a else ""
+    a_pos = st.selectbox("Posizione Autore:", ["top", "center", "bottom"], index=2, key="a_pos") if use_a else ""
 
     st.divider()
-    desc_it = st.text_area("Scena Visiva (IT):")
+    desc_it = st.text_area("Scena Visiva (IT):", key="desc_it")
     
-    if st.button("🪄 GENERA ARCHITETTURA"):
+    if st.button("🪄 1. GENERA ARCHITETTURA PROMPT"):
         if desc_it:
-            with st.spinner("Prioritizzazione testo in corso..."):
-                t = GoogleTranslator(source='it', target='en')
-                scene_en = t.translate(desc_it)
+            with st.spinner("Prioritizzazione testo..."):
+                scene_en = GoogleTranslator(source='it', target='en').translate(desc_it)
                 stile_en = STILI_INVISIBILI.get(genere_it)
                 
-                # TECNICA DI ENFORCEMENT (LOGICA LAYERED)
-                # Mettiamo il testo come PRIMO elemento del prompt per massima priorità
+                # COSTRUZIONE MANDATORIA DEL TESTO (Anti-sparizione)
                 text_layer = []
+                # Nota: raddoppiamo i controlli per essere sicuri che Flux legga bene
                 if use_t and t_val:
-                    text_layer.append(f"MANDATORY: The title \"\"\"{t_val}\"\"\" must be perfectly printed in a massive, bold, highly visible font at the {t_pos} section.")
+                    text_layer.append(f"MANDATORY: Print the title \"\"\"{t_val}\"\"\" in big, bold, 3D letters at the {t_pos} section.")
                 if use_a and a_val:
-                    text_layer.append(f"MANDATORY: The author name \"\"\"{a_val}\"\"\" must be perfectly printed in a clear, sharp, visible font at the {a_pos} section.")
+                    text_layer.append(f"MANDATORY: Print the author name \"\"\"{a_val}\"\"\" in clear, sharp letters at the {a_pos} section.")
                 
-                # Costruzione del prompt con "Hard Constraints"
+                # Prompt con Gerarchia Inviolabile
                 prompt = (
                     f"TYPOGRAPHY OVERLAY (HIGHEST PRIORITY): {' '.join(text_layer)} "
-                    f"BACKGROUND SCENE (SECONDARY): A professional ebook cover for a {stile_en} with {scene_en}. "
-                    f"VISUAL HIERARCHY: The background must be simplified or slightly darkened behind the text areas to ensure the typography is the most prominent element. "
-                    f"CRITICAL RULES: Do NOT write '{genere_it}'. No spelling errors in \"\"\"{t_val}\"\"\" and \"\"\"{a_val}\"\"\". All letters must be visible. "
-                    f"8k, cinematic lighting, sharp font rendering, graphic design masterpiece."
+                    f"BACKGROUND: A professional ebook cover, mood: {stile_en}, scene: {scene_en}. "
+                    f"VISUAL RULES: Background must be simple and darker behind the text areas to ensure absolute legibility. "
+                    f"CRITICAL: Do NOT write the word '{genere_it}'. Correct spelling for \"\"\"{t_val}\"\"\" and \"\"\"{a_val}\"\"\" is required. "
+                    f"8k, cinematic lighting, sharp font rendering."
                 )
                 
-                st.session_state['v81_prompt'] = prompt
-                st.success("Architettura con priorità testo pronta!")
+                st.session_state['active_prompt'] = prompt
+                st.success("Architettura pronta!")
 
 # ==============================================================================
 # 4. WORKSTATION DI PRODUZIONE
 # ==============================================================================
-st.title("🎨 Workstation v81 - Hard-Typography")
+st.title("🎨 Workstation v82 - Atomic Control")
 col_l, col_r = st.columns([1.2, 1])
 
-if 'v81_prompt' not in st.session_state: st.session_state['v81_prompt'] = ""
-if 'v81_res' not in st.session_state: st.session_state['v81_res'] = None
+# Recupero prompt dalla sessione
+current_prompt = st.session_state.get('active_prompt', "")
+current_image = st.session_state.get('active_image', None)
 
 with col_l:
-    p_edit = st.text_area("Prompt Tecnico (EN):", value=st.session_state['v81_prompt'], height=250)
+    p_edit = st.text_area("Prompt Tecnico Attivo:", value=current_prompt, height=250)
     
-    if st.button("🔥 GENERA COPERTINA HD"):
+    if st.button("🔥 2. GENERA COPERTINA HD"):
         if not p_edit:
             st.error("Configura il progetto nella sidebar!")
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
             try:
-                with st.spinner("Esecuzione Rendering (Typography Mode)..."):
+                with st.spinner("Rendering in corso..."):
                     out = client.run(
                         "black-forest-labs/flux-1.1-pro",
-                        input={
-                            "prompt": p_edit,
-                            "aspect_ratio": "2:3",
-                            "output_format": "jpg"
-                        }
+                        input={"prompt": p_edit, "aspect_ratio": "2:3", "output_format": "jpg"}
                     )
-                    st.session_state['v81_res'] = str(out)
+                    st.session_state['active_image'] = str(out)
                     st.balloons()
             except Exception as e:
-                st.error(f"Errore API: {e}")
+                st.error(f"Errore: {e}")
 
 with col_r:
     st.subheader("🖼️ Anteprima Finale")
-    if st.session_state['v81_res']:
-        st.image(st.session_state['v81_res'], use_container_width=True)
+    if current_image:
+        st.image(current_image, use_container_width=True)
         st.divider()
-        st.download_button("📥 Scarica JPG", requests.get(st.session_state['v81_res']).content, "cover.jpg")
+        st.download_button("📥 Scarica JPG", requests.get(current_image).content, "cover.jpg")
     else:
         st.info("In attesa di produzione...")
-
-st.caption("v81.0 - Mandatory Typography | Layered Prompting | Flux 1.1 Pro")
