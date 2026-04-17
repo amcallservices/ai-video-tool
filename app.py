@@ -3,131 +3,76 @@ import replicate
 import requests
 import time
 import os
-from datetime import datetime
 
-# ==========================================
-# 1. CONFIGURAZIONE PAGINA E CSS
-# ==========================================
-st.set_page_config(
-    page_title="AI Video Studio Pro",
-    page_icon="🎬",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# 1. SETUP E CSS (Invariato per mantenere la sidebar fissa)
+st.set_page_config(page_title="AI Video Studio Pro", page_icon="🎬", layout="wide", initial_sidebar_state="expanded")
+st.markdown("<style>[data-testid='sidebar-button'] { display: none !important; } [data-testid='stSidebar'] { min-width: 350px !important; } #MainMenu, footer, header {visibility: hidden;}</style>", unsafe_allow_html=True)
 
-# CSS per bloccare la sidebar e pulire l'interfaccia
-st.markdown("""
-    <style>
-    [data-testid="sidebar-button"] { display: none !important; }
-    [data-testid="stSidebar"] { min-width: 350px !important; max-width: 350px !important; border-right: 1px solid #333; }
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stAppDeployButton {display:none;}
-    .block-container { padding-top: 1rem; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# ==========================================
-# 2. GESTIONE AUTENTICAZIONE
-# ==========================================
+# 2. AUTENTICAZIONE
 if "REPLICATE_API_TOKEN" in st.secrets:
-    os.environ["REPLICATE_API_TOKEN"] = st.secrets["REPLICATE_API_TOKEN"]
     client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
 else:
-    st.error("🔑 API Token mancante nei Secrets di Streamlit.")
+    st.error("Token mancante nei Secrets!")
     st.stop()
 
-# ==========================================
-# 3. SIDEBAR (LOGICA E SPIEGAZIONI)
-# ==========================================
+# 3. SIDEBAR CON SPIEGAZIONI ENGINE
 with st.sidebar:
-    st.title("⚙️ CONFIGURAZIONE")
+    st.title("⚙️ ENGINE AI")
+    selected_model = st.radio("Scegli il motore:", ["Minimax-V1", "Luma-Dream", "SVD-Stable"])
     st.divider()
     
-    selected_model = st.radio(
-        "Seleziona AI Engine:",
-        ["Minimax-V1", "Luma-Dream", "SVD-Stable"],
-        help="Scegli il motore in base alle tue esigenze di qualità e velocità."
-    )
-    
-    st.divider()
-    st.markdown("### 🧬 Guida agli Engine:")
-    
+    # Spiegazione delle tipologie per il cliente
     if selected_model == "Minimax-V1":
-        st.info("**Minimax-V1**: Il miglior compromesso. Eccelle nel realismo umano e nella coerenza dei volti. È il più affidabile per video con persone.")
+        st.write("✨ **Il Realista**: Eccelle nei volti umani e movimenti fluidi. È il più moderno.")
     elif selected_model == "Luma-Dream":
-        st.info("**Luma-Dream**: Alta qualità cinematografica. Gestisce movimenti di camera complessi e leggi fisiche (acqua, fuoco) in modo magistrale.")
+        st.write("🎥 **Il Regista**: Grandi effetti cinematografici e fisica accurata (fuoco, acqua).")
     else:
-        st.info("**SVD-Stable**: Il più veloce. Ottimo per animazioni brevi e creative, ma meno fotorealistico rispetto ai giganti Minimax e Luma.")
+        st.write("⚡ **Lo Scattante**: Più veloce, ideale per brevi clip artistiche e astratte.")
 
-    st.divider()
-    if 'history' not in st.session_state: st.session_state['history'] = []
-    st.metric("Video Generati", len(st.session_state['history']))
-
-# ==========================================
-# 4. AREA PRINCIPALE (UI)
-# ==========================================
+# 4. UI PRINCIPALE
 st.title("🎬 AI Video Production Studio")
+prompt = st.text_area("Descrizione video:", placeholder="A futuristic car racing in a neon city...", height=150)
+generate_btn = st.button("🚀 AVVIA PRODUZIONE", use_container_width=True)
 
-prompt = st.text_area(
-    "Descrizione del video (Storyscript):", 
-    placeholder="Esempio: Cinematic drone shot of a volcanic eruption at night, lava flowing into the ocean, 8k...", 
-    height=150
-)
-
-col_gen, col_empty = st.columns([1, 2])
-with col_gen:
-    generate_btn = st.button("🚀 AVVIA PRODUZIONE", use_container_width=True)
-
-# ==========================================
-# 5. LOGICA DI GENERAZIONE (FIX ERRORE 422/404)
-# ==========================================
+# 5. LOGICA DI GENERAZIONE (VERSIONI AGGIORNATE PER EVITARE 404)
 if generate_btn:
     if not prompt:
-        st.warning("⚠️ Inserisci una descrizione!")
+        st.warning("Inserisci un prompt!")
     else:
         try:
-            # Mappatura corretta per evitare errori di versione
-            # Usiamo il formato owner/model che Replicate preferisce
-            model_paths = {
-                "Minimax-V1": "minimax/video-01",
+            # Mappatura con VERSIONI FISSE (Le più stabili ad oggi)
+            model_configs = {
+                "Minimax-V1": "minimax/video-01", 
                 "Luma-Dream": "luma/dream-machine",
-                "SVD-Stable": "stability-ai/stable-video-diffusion"
+                "SVD-Stable": "stability-ai/stable-video-diffusion:3f0457d9eddadca94820921444827f0e0103dd90a780bc0642f883f360706222"
             }
             
-            target_model = model_paths[selected_model]
+            target = model_configs[selected_model]
             
-            with st.status(f"Generazione con {selected_model} in corso...", expanded=True) as status:
-                st.write("📡 Invio prompt ai server...")
-                
-                # Creazione predizione senza ID versione fisso
+            with st.status(f"Generazione con {selected_model}...", expanded=True) as status:
+                # Per Minimax e Luma usiamo il deploy senza versione se possibile, 
+                # per SVD forziamo la versione che sappiamo esistere.
                 prediction = client.predictions.create(
-                    model=target_model,
+                    model=target,
                     input={"prompt": prompt}
                 )
 
                 while prediction.status not in ["succeeded", "failed", "canceled"]:
-                    st.write(f"⏳ Elaborazione... Stato attuale: {prediction.status}")
+                    st.write(f"⏳ Stato: {prediction.status}...")
                     time.sleep(10)
                     prediction.reload()
                 
                 if prediction.status == "succeeded":
-                    status.update(label="✅ Video Pronto!", state="complete")
                     video_url = prediction.output
-                    
-                    st.divider()
                     st.video(video_url)
+                    st.success("✅ Video completato!")
                     
-                    # Salvataggio e Download
-                    st.session_state['history'].append(video_url)
-                    video_bytes = requests.get(video_url).content
-                    st.download_button("📥 Scarica Video MP4", video_bytes, "video_ai.mp4", "video/mp4")
+                    # Tasto Download
+                    data = requests.get(video_url).content
+                    st.download_button("📥 Scarica MP4", data, "video_ai.mp4", "video/mp4")
                 else:
-                    st.error(f"Errore nella generazione: {prediction.error}")
+                    st.error(f"Errore Replicate: {prediction.error}")
 
         except Exception as e:
             st.error(f"Errore critico: {e}")
-
-st.markdown("---")
-st.caption("© 2026 AI Video Studio - Engine: Minimax / Luma / Stability")
+            st.info("Se l'errore è 404, il modello potrebbe aver cambiato indirizzo API. Prova un altro Engine.")
