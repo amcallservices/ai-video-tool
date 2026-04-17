@@ -1,10 +1,10 @@
 """
-AI VIDEO PRODUCTION SUITE - VERSION 4.0 (ENTERPRISE)
----------------------------------------------------
-DESCRIZIONE: Tool professionale per la generazione video tramite API Replicate.
-AUTORE: Progetto AI Video Tool
-DATA: 2026
----------------------------------------------------
+================================================================================
+PROGETTO: AI VIDEO STUDIO ENTERPRISE v5.0
+DESCRIZIONE: Suite professionale per la generazione video tramite API Replicate.
+LOGICA: Gestione dinamica dei modelli, Polling asincrono e UI Personalizzata.
+DOCUMENTAZIONE: https://replicate.com/docs/reference/http#predictions.create
+================================================================================
 """
 
 import streamlit as st
@@ -13,17 +13,17 @@ import requests
 import time
 import os
 import base64
-import json
+import logging
 from datetime import datetime
 from PIL import Image
 from io import BytesIO
 
 # ==============================================================================
-# 1. CONFIGURAZIONE GLOBALE E PARAMETRI DI SISTEMA
+# 1. CONFIGURAZIONE E ARCHITETTURA DELLA PAGINA
 # ==============================================================================
 
-# Impostiamo il layout della pagina in modalità 'wide' (ampia) per una UI moderna.
-# 'initial_sidebar_state' è impostato su 'expanded' per garantire la visibilità.
+# Impostiamo il layout 'wide' per massimizzare lo spazio visivo del video.
+# La sidebar viene impostata come espansa di default tramite configurazione Streamlit.
 st.set_page_config(
     page_title="AI Video Studio Pro - Enterprise Edition",
     page_icon="🎬",
@@ -31,331 +31,186 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Definiamo le costanti dei modelli per una manutenzione centralizzata.
-# Nota: Abbiamo rimosso gli hash delle versioni per evitare errori 'Invalid reference'.
-MODEL_CONFIGS = {
+# Definiamo i percorsi dei modelli aggiornati (Fix per errore 404)
+# Per SVD usiamo la versione stabile verificata per evitare errori di puntamento.
+MODEL_REGISTRY = {
     "Minimax-V1": {
-        "id": "minimax/video-01",
-        "description": "Il Realista: Ideale per volti umani e movimenti fluidi.",
-        "pros": ["Coerenza dei tratti somatici", "Alta risoluzione", "Fisica corretta"],
-        "cons": ["Tempi di rendering medi"]
+        "path": "minimax/video-01",
+        "tagline": "Coerenza fotorealistica superiore",
+        "use_case": "Video con esseri umani, interviste AI, scene d'azione fluide.",
+        "specs": "Risoluzione: 1280x720 | Durata: 6s | Qualità: Alta"
     },
     "Luma-Dream": {
-        "id": "luma/dream-machine",
-        "description": "Il Regista: Grandi effetti cinematografici e fisica accurata.",
-        "pros": ["Illuminazione realistica", "Effetti particellari (fuoco, acqua)", "Regia automatica"],
-        "cons": ["Richiede prompt descrittivi complessi"]
+        "path": "luma/dream-machine",
+        "tagline": "Cinematografia e fisica avanzata",
+        "use_case": "Paesaggi, effetti speciali, movimenti di camera complessi.",
+        "specs": "Risoluzione: 1360x752 | Durata: 5s | Qualità: Cinematografica"
     },
     "SVD-Stable": {
-        "id": "stability-ai/stable-video-diffusion",
-        "description": "Lo Scattante: Ottimo per animazioni brevi e concept rapidi.",
-        "pros": ["Velocità elevata", "Costi contenuti per generazione"],
-        "cons": ["Movimento a volte onirico o distorto"]
+        "path": "stability-ai/stable-video-diffusion:3f0457d9eddadca94820921444827f0e0103dd90a780bc0642f883f360706222",
+        "tagline": "Rapidità e animazione creativa",
+        "use_case": "Loop artistici, sfondi animati, prototipazione rapida.",
+        "specs": "Risoluzione: 1024x576 | Durata: 4s | Qualità: Standard"
     }
 }
 
 # ==============================================================================
-# 2. INIEZIONE CSS PER INTERFACCIA PERSONALIZZATA (SIDEBAR BLOCCATA)
+# 2. DESIGN E CUSTOM CSS (SIDEBAR BLOCCATA)
 # ==============================================================================
 
-def apply_custom_styles():
-    """Applica stili CSS per rendere l'interfaccia professionale e bloccare la sidebar."""
-    custom_css = """
-    <style>
-        /* Blocco Sidebar: Nasconde il pulsante di chiusura per mantenerla sempre fissa */
+def inject_enterprise_styles():
+    """Inietta CSS avanzato per bloccare la sidebar e rimuovere il branding standard."""
+    st.markdown("""
+        <style>
+        /* Blocco Sidebar: Rimuove l'icona di chiusura e forza la visibilità */
         [data-testid="sidebar-button"] {
             display: none !important;
         }
         
-        /* Forza la sidebar a una larghezza specifica per evitare fluttuazioni */
+        /* Larghezza sidebar fissa per layout professionale */
         [data-testid="stSidebar"] {
-            min-width: 380px !important;
-            max-width: 380px !important;
-            border-right: 1px solid #3d3d3d;
+            min-width: 400px !important;
+            max-width: 400px !important;
+            border-right: 1px solid #2d2d2d;
+            background-color: #0e1117;
         }
-        
-        /* Nasconde gli elementi standard di Streamlit (Branding) */
+
+        /* Nasconde header, footer e menu 'Made with Streamlit' */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
         .stAppDeployButton {display:none;}
         
-        /* Stile per i box informativi nella sidebar */
-        .sidebar-info-box {
-            background-color: #1e1e1e;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 5px solid #ff4b4b;
-            margin-bottom: 20px;
+        /* Miglioramento della leggibilità dei testi */
+        .stMarkdown p {
+            font-size: 1.1rem;
+            line-height: 1.6;
         }
         
-        /* Allineamento e spaziature della pagina principale */
-        .block-container {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-        }
-        
-        /* Personalizzazione bottoni */
-        .stButton>button {
-            border-radius: 8px;
-            height: 3em;
+        /* Stile pulsante Generazione */
+        div.stButton > button:first-child {
+            background-color: #ff4b4b;
+            color: white;
+            border: none;
+            padding: 20px;
+            font-size: 1.2rem;
             font-weight: bold;
-            transition: all 0.3s ease;
+            border-radius: 12px;
+            transition: 0.3s ease;
+            width: 100%;
         }
         
-        .stButton>button:hover {
-            border: 1px solid #ff4b4b;
-            color: #ff4b4b;
-            transform: translateY(-2px);
+        div.stButton > button:hover {
+            background-color: #ff3333;
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(255, 75, 75, 0.4);
         }
-    </style>
-    """
-    st.markdown(custom_css, unsafe_allow_html=True)
 
-apply_custom_styles()
+        /* Container Video Custom */
+        .video-container {
+            border: 2px solid #333;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
-# ==============================================================================
-# 3. GESTIONE LOGICA DI SISTEMA (SESSION STATE)
-# ==============================================================================
-
-# Inizializziamo il Session State per memorizzare la cronologia e i log di sistema.
-if 'system_logs' not in st.session_state:
-    st.session_state['system_logs'] = [f"{datetime.now().strftime('%H:%M:%S')} - Sistema pronto."]
-
-if 'video_history' not in st.session_state:
-    st.session_state['video_history'] = []
-
-def log_event(message):
-    """Aggiunge un evento ai log di sistema."""
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    st.session_state['system_logs'].append(f"{timestamp} - {message}")
+inject_enterprise_styles()
 
 # ==============================================================================
-# 4. COMPONENTI DELLA SIDEBAR (PANNELLO DI CONTROLLO FISSO)
+# 3. LOGICA DI SISTEMA E GESTIONE ERRORI
 # ==============================================================================
 
-with st.sidebar:
-    st.title("⚙️ AI Control Center")
-    st.caption("Configurazione Enterprise v4.0.2")
-    st.divider()
-    
-    # Selezione del Motore AI
-    st.header("🤖 Engine AI")
-    selected_engine = st.radio(
-        "Seleziona la tecnologia di base:",
-        list(MODEL_CONFIGS.keys()),
-        index=0,
-        help="Ogni engine utilizza algoritmi differenti per il calcolo dei frame."
-    )
-    
-    # Visualizzazione dinamica delle spiegazioni richieste
-    engine_data = MODEL_CONFIGS[selected_engine]
-    st.markdown(f"""
-    <div class="sidebar-info-box">
-        <strong>{selected_engine}</strong><br>
-        <small>{engine_data['description']}</small>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.subheader("✅ Pro:")
-    for pro in engine_data['pros']:
-        st.write(f"- {pro}")
-        
-    st.subheader("❌ Contro:")
-    for con in engine_data['cons']:
-        st.write(f"- {con}")
-        
-    st.divider()
-    
-    # Monitoraggio Sistema
-    st.header("📊 System Health")
-    st.progress(100, text="API Connection: OK")
-    st.write(f"Crediti stimati: Variabili per Engine")
-    
-    # Log di sistema in tempo reale
-    with st.expander("📝 Visualizza Log Tecnici", expanded=False):
-        for log in reversed(st.session_state['system_logs'][-15:]):
-            st.caption(log)
-            
-    if st.button("Pulisci Cronologia Sessione"):
-        st.session_state['video_history'] = []
-        log_event("Cronologia pulita dall'utente.")
-        st.rerun()
+def initialize_session():
+    """Inizializza le variabili di sessione per tracciare attività e cronologia."""
+    if 'history' not in st.session_state:
+        st.session_state['history'] = []
+    if 'total_generated' not in st.session_state:
+        st.session_state['total_generated'] = 0
+    if 'last_status' not in st.session_state:
+        st.session_state['last_status'] = "Pronto all'uso"
 
-# ==============================================================================
-# 5. CORE LOGIC - COMUNICAZIONE API REPLICATE
-# ==============================================================================
-
-def get_replicate_client():
-    """Inizializza il client Replicate verificando le credenziali."""
+def get_api_client():
+    """Configura e restituisce il client Replicate verificando le credenziali."""
     if "REPLICATE_API_TOKEN" in st.secrets:
         token = st.secrets["REPLICATE_API_TOKEN"]
-        # Validazione minima del formato del token
-        if not token.startswith("r8_"):
-            log_event("Errore: Formato Token non valido.")
-            return None
         return replicate.Client(api_token=token)
     return None
 
-def run_video_generation(client, engine_name, user_prompt):
-    """Gestisce l'intero ciclo di vita della generazione video."""
-    model_id = MODEL_CONFIGS[engine_name]["id"]
-    
+def download_video(url):
+    """Scarica il video dall'URL per permettere il download locale."""
     try:
-        log_event(f"Avvio task su {model_id}...")
-        
-        # Inizializziamo la predizione su Replicate
-        # Utilizziamo il modello direttamente senza version_hash per evitare 'Invalid reference'
-        prediction = client.predictions.create(
-            model=model_id,
-            input={"prompt": user_prompt}
-        )
-        
-        log_event(f"Task ID creato: {prediction.id}")
-        
-        # Interfaccia di attesa per l'utente
-        with st.status(f"Generazione con {engine_name} in corso...", expanded=True) as status:
-            status.write("📡 Inviando i dati ai server GPU di Replicate...")
-            
-            while prediction.status not in ["succeeded", "failed", "canceled"]:
-                # Mostriamo lo stato attuale all'utente
-                status.write(f"⏳ Stato: {prediction.status} (Aggiornato alle {datetime.now().strftime('%H:%M:%S')})")
-                time.sleep(10) # Intervallo di polling sicuro
-                prediction.reload()
-                
-            if prediction.status == "succeeded":
-                status.update(label="✨ Elaborazione Completata!", state="complete", expanded=False)
-                log_event("Generazione riuscita.")
-                return prediction.output
-            else:
-                status.update(label="❌ Errore durante l'elaborazione.", state="error")
-                log_event(f"Errore Replicate: {prediction.error}")
-                st.error(f"Dettagli Errore: {prediction.error}")
-                return None
-                
+        response = requests.get(url)
+        return response.content
     except Exception as e:
-        log_event(f"Eccezione critica: {str(e)}")
-        st.error(f"Si è verificato un errore critico: {str(e)}")
+        st.error(f"Errore durante il download del video: {e}")
         return None
 
 # ==============================================================================
-# 6. INTERFACCIA UTENTE PRINCIPALE (MAIN UI)
+# 4. COMPONENTI DELLA SIDEBAR (PANNELLO FISSO)
+# ==============================================================================
+
+initialize_session()
+
+with st.sidebar:
+    st.title("🛡️ AI CONTROL CENTER")
+    st.caption("Piattaforma di Produzione Video Professionale")
+    st.divider()
+    
+    # Selezione del Motore AI (AI Engine Selector)
+    st.subheader("⚙️ Configurazione Engine")
+    engine_choice = st.selectbox(
+        "Seleziona Motore di Calcolo:",
+        list(MODEL_REGISTRY.keys()),
+        index=0,
+        help="Scegli l'engine in base alla necessità di realismo o velocità."
+    )
+    
+    # Spiegazione dettagliata tipologie AI Engine (Richiesta Utente)
+    selected_info = MODEL_REGISTRY[engine_choice]
+    st.info(f"**{selected_info['tagline']}**\n\n{selected_info['use_case']}")
+    st.markdown(f"📊 **Specifiche Tecniche:**\n_{selected_info['specs']}_")
+    
+    st.divider()
+    
+    # Dashboard Statistiche
+    st.subheader("📈 Session Stats")
+    col_stat1, col_stat2 = st.columns(2)
+    col_stat1.metric("Video Creati", st.session_state['total_generated'])
+    col_stat2.metric("Stato Server", "Online", delta_color="normal")
+    
+    st.divider()
+    
+    # Cronologia Rapida
+    st.subheader("📜 Recent History")
+    if st.session_state['history']:
+        for i, item in enumerate(reversed(st.session_state['history'][-5:])):
+            st.caption(f"{i+1}. {item['timestamp']} - {item['model']}")
+    else:
+        st.caption("Nessuna generazione recente.")
+        
+    if st.button("Pulisci Dati Sessione"):
+        st.session_state['history'] = []
+        st.session_state['total_generated'] = 0
+        st.rerun()
+
+# ==============================================================================
+# 5. INTERFACCIA PRINCIPALE E LOGICA DI GENERAZIONE
 # ==============================================================================
 
 st.title("🎬 Professional AI Video Studio")
-st.markdown("""
-Questa piattaforma utilizza calcolo distribuito ad alte prestazioni per trasformare le tue descrizioni in video.
-Scegli l'engine corretto nella barra laterale in base al tipo di risultato desiderato.
-""")
+st.markdown("---")
 
-# Layout a due colonne per input e anteprima rapida
-col_input, col_preview = st.columns([2, 1])
+# Area di input per il prompt testuale
+col_input, col_info = st.columns([2, 1])
 
 with col_input:
-    st.subheader("🖋️ Scripting & Storyboarding")
-    text_prompt = st.text_area(
-        "Inserisci lo script del video (Prompt):",
-        placeholder="Descrivi l'azione, l'atmosfera e lo stile... (Es: Un gatto spaziale che fluttua tra le nebulose, 4k, neon lights)",
-        height=250,
-        help="Un prompt dettagliato garantisce un video migliore. Includi termini come 'cinematic', 'high resolution', 'slow motion'."
+    prompt_text = st.text_area(
+        "Inserisci lo Storyboard / Prompt del video:",
+        placeholder="Descrivi l'azione, l'atmosfera e i dettagli visivi (in inglese)...",
+        height=200,
+        help="Esempio: A majestic dragon flying over a snowy peak, cinematic lighting, ultra-detailed."
     )
     
     # Opzioni di ottimizzazione prompt
-    with st.expander("🛠️ Ottimizzazioni Avanzate"):
-        c1, c2 = st.columns(2)
-        with c1:
-            fps_target = st.select_slider("FPS (Frame per secondo)", options=[8, 12, 16, 24], value=12)
-        with c2:
-            guidance = st.slider("Guidance Scale (Fedeltà al testo)", 1.0, 10.0, 6.5)
-
-    generate_button = st.button("🚀 AVVIA PRODUZIONE VIDEO", use_container_width=True)
-
-with col_preview:
-    st.subheader("📋 Riepilogo Task")
-    if text_prompt:
-        st.write(f"**Engine:** {selected_engine}")
-        st.write(f"**Caratteri Prompt:** {len(text_prompt)}")
-        st.write(f"**Stima Rendering:** ~90 - 150 secondi")
-    else:
-        st.info("In attesa di istruzioni testuali...")
-
-# ==============================================================================
-# 7. LOGICA DI ESECUZIONE AL CLICK
-# ==============================================================================
-
-if generate_button:
-    if not text_prompt:
-        st.warning("⚠️ Per favore, inserisci una descrizione del video prima di procedere.")
-        log_event("Tentativo di generazione senza prompt.")
-    else:
-        client = get_replicate_client()
-        
-        if not client:
-            st.error("Impossibile connettersi a Replicate. Verifica il Token nei Secrets.")
-            log_event("Errore autenticazione client.")
-        else:
-            # Esecuzione della chiamata principale
-            video_result = run_video_generation(client, selected_engine, text_prompt)
-            
-            if video_result:
-                # Gestione dell'output (che può essere un URL stringa o una lista)
-                final_url = video_result if isinstance(video_result, str) else video_result[0]
-                
-                # Memorizziamo nella cronologia
-                st.session_state['video_history'].append({
-                    "engine": selected_engine,
-                    "prompt": text_prompt,
-                    "url": final_url,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")
-                })
-                
-                # Visualizzazione dell'output finale
-                st.divider()
-                st.header("✨ Risultato Video Finale")
-                st.video(final_url)
-                
-                # Funzionalità di Download
-                try:
-                    video_data = requests.get(final_url).content
-                    st.download_button(
-                        label="📥 Scarica Video (MP4)",
-                        data=video_data,
-                        file_name=f"ai_video_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4",
-                        mime="video/mp4",
-                        use_container_width=True
-                    )
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"Errore durante la preparazione del download: {e}")
-
-# ==============================================================================
-# 8. CRONOLOGIA DELLA SESSIONE (GALLERIA)
-# ==============================================================================
-
-if st.session_state['video_history']:
-    st.divider()
-    st.header("🎞️ Galleria Generazioni Correnti")
-    
-    # Creiamo una griglia 2x2 per i video passati
-    history_cols = st.columns(2)
-    for idx, item in enumerate(reversed(st.session_state['video_history'][:-1])): # Escludiamo l'ultimo appena mostrato
-        with history_cols[idx % 2]:
-            st.write(f"**Engine:** {item['engine']} | **Data:** {item['timestamp']}")
-            st.video(item['url'])
-            st.caption(f"Prompt: {item['prompt'][:50]}...")
-
-# ==============================================================================
-# 9. FOOTER E INFORMAZIONI LEGALI
-# ==============================================================================
-
-st.markdown("---")
-f_col1, f_col2, f_col3 = st.columns(3)
-with f_col1:
-    st.caption("© 2026 AI Video Studio Pro")
-with f_col2:
-    st.caption("Privacy Policy | Terms of Service")
-with f_col3:
-    st.caption(f"Status: Online | API: v2.1")
-
-# Nota tecnica: Il codice è stato espanso con commenti strutturali e gestione degli errori 
-# per raggiungere la densità e la robustezza richiesta per un ambiente di produzione.
