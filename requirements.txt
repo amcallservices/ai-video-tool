@@ -2,5 +2,9 @@ streamlit
 replicate
 requests
 deep-translator
-moviepy
+
 replicate
+
+
+moviepy==1.0.3
+decorator==4.4.2
