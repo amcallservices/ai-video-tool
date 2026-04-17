@@ -1,9 +1,9 @@
 """
 ================================================================================
-AI MULTIMEDIA STUDIO - DEEP-SHIELD v47.0
+AI MULTIMEDIA STUDIO - IRON-CIRCUIT v48.0
 --------------------------------------------------------------------------------
-FIX: Gestione errori 500 e protezione FileNotFoundError.
-ENGINE: Luma (Video) / Flux (Immagine) - I più stabili del 2026.
+SOLUZIONE: Auto-Retry su Errore 500 + Timeout Management.
+LOGICA: Gestione resiliente delle clip video e protezione file.
 ================================================================================
 """
 
@@ -16,7 +16,7 @@ from moviepy.editor import VideoFileClip, concatenate_videoclips
 from deep_translator import GoogleTranslator
 
 # --- 1. SETUP UI ---
-st.set_page_config(page_title="AI Studio Safe-Mode", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="AI Studio Iron-Circuit", page_icon="⚡", layout="wide")
 
 st.markdown("""
     <style>
@@ -25,21 +25,21 @@ st.markdown("""
     #MainMenu, footer, header, .stAppDeployButton { visibility: hidden; }
     .main { background-color: #0d1117; }
     div.stButton > button:first-child {
-        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+        background: linear-gradient(135deg, #3498db 0%, #1d4ed8 100%);
         color: white; font-size: 1.2rem; font-weight: 800; height: 4rem; border-radius: 8px; width: 100%;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. LOGICA MONTAGGIO VIDEO (CON PROTEZIONE) ---
+# --- 2. LOGICA MONTAGGIO (CON CONTROLLO INTEGRITÀ) ---
 def stitch_master(urls):
     temp_files = []
     clips = []
-    out = "final_output_master.mp4"
+    out = "master_output_final.mp4"
     try:
         for i, url in enumerate(urls):
             fname = f"part_{i}.mp4"
-            r = requests.get(url, timeout=30)
+            r = requests.get(url, timeout=45)
             if r.status_code == 200:
                 with open(fname, "wb") as f: f.write(r.content)
                 temp_files.append(fname)
@@ -50,7 +50,7 @@ def stitch_master(urls):
             final.write_videofile(out, codec="libx264", audio=False, logger=None)
             return out
     except Exception as e:
-        st.error(f"Errore durante il montaggio video: {e}")
+        st.error(f"Errore tecnico nel montaggio: {e}")
     finally:
         for c in clips: c.close()
         for f in temp_files: 
@@ -60,12 +60,11 @@ def stitch_master(urls):
 # --- 3. SESSION STATE ---
 if 'eng_p' not in st.session_state: st.session_state['eng_p'] = ""
 if 'media_res' not in st.session_state: st.session_state['media_res'] = None
-if 'is_image' not in st.session_state: st.session_state['is_image'] = False
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
-    st.title("🛡️ SAFE CONTROL")
-    mode = st.radio("Seleziona Output:", ["Video (15s)", "Immagine Singola"])
+    st.title("⚡ IRON CONTROL")
+    mode = st.radio("Scegli Produzione:", ["Video (15s)", "Immagine"])
     st.divider()
     it_sub = st.text_input("Soggetto (IT):")
     it_act = st.text_area("Azione (IT):")
@@ -74,8 +73,8 @@ with st.sidebar:
         if it_sub and it_act:
             ts = GoogleTranslator(source='it', target='en').translate(it_sub)
             ta = GoogleTranslator(source='it', target='en').translate(it_act)
-            st.session_state['eng_p'] = f"{ts}, {ta}, high quality, cinematic."
-            st.success("Testo pronto!")
+            st.session_state['eng_p'] = f"{ts}, {ta}, cinematic quality, 4k."
+            st.success("Pronto!")
 
 # --- 5. PRODUZIONE ---
 st.title(f"🚀 Workstation: {mode}")
@@ -84,52 +83,59 @@ col_l, col_r = st.columns([2, 1])
 with col_l:
     p_ready = st.text_area("Script (EN):", value=st.session_state['eng_p'], height=150)
     
-    if st.button(f"🔥 AVVIA GENERAZIONE"):
+    if st.button("🔥 GENERA ORA"):
         if not p_ready:
             st.error("Traduci lo script!")
         elif "REPLICATE_API_TOKEN" not in st.secrets:
             st.error("Token API mancante!")
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-            st.session_state['media_res'] = None # Reset precedente
+            st.session_state['media_res'] = None 
             
-            if mode == "Immagine Singola":
-                st.session_state['is_image'] = True
-                with st.spinner("Creazione immagine..."):
+            if mode == "Immagine":
+                with st.spinner("Rendering Flux..."):
                     try:
                         out = client.run("black-forest-labs/flux-schnell", input={"prompt": p_ready})
                         st.session_state['media_res'] = str(out[0])
-                        st.success("Immagine completata!")
                     except Exception as e:
-                        st.error(f"Errore Server (500): {e}. Riprova tra poco.")
+                        st.error(f"Errore Server (Immagine): {e}")
             
             else:
-                st.session_state['is_image'] = False
                 urls = []
-                with st.status("🎬 Produzione Video...", expanded=True) as status:
+                with st.status("🎬 Circuito Video Attivo...", expanded=True) as status:
                     for i in range(3):
-                        try:
-                            status.write(f"Clip {i+1}/3...")
-                            pred = client.predictions.create(
-                                model="luma/dream-machine",
-                                input={"prompt": f"{p_ready}, part {i+1}"}
-                            )
-                            while pred.status not in ["succeeded", "failed"]:
-                                time.sleep(5)
-                                pred.reload()
-                            
-                            if pred.status == "succeeded":
-                                urls.append(str(pred.output))
-                                if i < 2: time.sleep(15) # Anti-throttle
-                            else:
-                                st.error(f"Il server ha rifiutato la clip {i+1}")
-                                break
-                        except Exception as e:
-                            st.error(f"Errore API Video: {e}")
+                        clip_done = False
+                        retries = 2 # Prova 3 volte in totale per ogni clip
+                        
+                        while not clip_done and retries >= 0:
+                            try:
+                                status.write(f"Produzione clip {i+1}/3 (Tentativo {3-retries})...")
+                                pred = client.predictions.create(
+                                    model="luma/dream-machine",
+                                    input={"prompt": f"{p_ready}, segment {i+1}"}
+                                )
+                                while pred.status not in ["succeeded", "failed"]:
+                                    time.sleep(5)
+                                    pred.reload()
+                                
+                                if pred.status == "succeeded":
+                                    urls.append(str(pred.output))
+                                    clip_done = True
+                                    if i < 2: time.sleep(15) # Anti-throttle
+                                else:
+                                    retries -= 1
+                                    status.write("⚠️ Errore server, riprovo...")
+                                    time.sleep(10)
+                            except Exception as e:
+                                retries -= 1
+                                time.sleep(10)
+                        
+                        if not clip_done:
+                            st.error(f"Impossibile completare la clip {i+1} dopo vari tentativi.")
                             break
                     
                     if len(urls) >= 1:
-                        status.write("📦 Stitching...")
+                        status.write("📦 Unione in corso...")
                         st.session_state['media_res'] = stitch_master(urls)
 
 with col_r:
@@ -137,18 +143,15 @@ with col_r:
     res = st.session_state['media_res']
     
     if res:
-        if st.session_state['is_image']:
+        if mode == "Immagine":
             st.image(res)
-            st.link_button("📥 Scarica Immagine", res)
+            st.link_button("📥 Scarica", res)
         else:
-            # PROTEZIONE CRITICA: Controlla se il file esiste prima di aprirlo
             if os.path.exists(res):
                 st.video(res)
                 with open(res, "rb") as f:
-                    st.download_button("📥 Scarica Video", f, "video_15s.mp4")
-            else:
-                st.warning("Il file video non è stato trovato sul server. Riprova la generazione.")
+                    st.download_button("📥 Scarica Master", f, "video_15s.mp4")
     else:
-        st.info("In attesa di dati validi dal server...")
+        st.info("In attesa di dati stabili dal server...")
 
-st.caption("v47.0 | Deep-Shield Edition | Safe Error Handling")
+st.caption("v48.0 | Iron-Circuit | Auto-Retry Logic")
