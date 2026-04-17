@@ -1,10 +1,10 @@
 """
 ================================================================================
-AI MULTIMEDIA STUDIO - THE STANDARD v58.0
+AI MULTIMEDIA STUDIO - THE FINAL CHOICE v59.0
 --------------------------------------------------------------------------------
-SOLUZIONE: Utilizzo di modelli UFFICIALI (Google Imagen & Flux).
-OBIETTIVO: Eliminare 422/404 usando endpoint garantiti da Replicate.
-LOGICA: Video via Google Imagen (stabilità massima) / Immagine via Flux.
+ENGINE VIDEO: Minimax (video-01) - Economico, stabile, alta compatibilità.
+ENGINE IMMAGINE: Flux Schnell - Il re della stabilità.
+DURATA: 15s (3 clip da 5s ciascuna).
 ================================================================================
 """
 
@@ -18,27 +18,23 @@ from moviepy.editor import VideoFileClip, concatenate_videoclips
 from deep_translator import GoogleTranslator
 
 # --- 1. SETUP UI ---
-st.set_page_config(page_title="AI Studio Standard v58", page_icon="⚖️", layout="wide")
+st.set_page_config(page_title="AI Studio v59", page_icon="⚡", layout="wide")
 
 st.markdown("""
     <style>
     [data-testid="sidebar-button"] { display: none !important; }
-    [data-testid="stSidebar"] {
-        min-width: 400px !important;
-        background-color: #0d1117;
-        border-right: 1px solid #30363d;
-    }
+    [data-testid="stSidebar"] { min-width: 400px !important; background-color: #0d1117; border-right: 1px solid #30363d; }
     #MainMenu, footer, header, .stAppDeployButton { visibility: hidden; }
     .main { background-color: #0d1117; color: #c9d1d9; }
     div.stButton > button:first-child {
-        background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+        background: linear-gradient(135deg, #00c853 0%, #007e33 100%);
         color: white; font-size: 1.2rem; font-weight: 800; height: 4.5rem; border-radius: 10px; width: 100%; border: none;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. ENGINE DI MONTAGGIO ---
-def stitch_video_master(urls):
+# --- 2. ENGINE MONTAGGIO ---
+def stitch_master(urls):
     session_id = str(uuid.uuid4())[:6]
     temp_files, clips = [], []
     out_name = f"master_{session_id}.mp4"
@@ -62,13 +58,13 @@ def stitch_video_master(urls):
             if os.path.exists(f): os.remove(f)
     return None
 
-# --- 3. SESSION STATE ---
+# --- 3. LOGICA DI PROCESSO ---
 if 'p_en' not in st.session_state: st.session_state['p_en'] = ""
-if 'final_link' not in st.session_state: st.session_state['final_link'] = None
+if 'res_media' not in st.session_state: st.session_state['res_media'] = None
 
-# --- 4. SIDEBAR ---
 with st.sidebar:
-    st.title("⚖️ STANDARD HUB")
+    st.title("⚡ MINIMAX ENGINE")
+    st.caption("v59.0 - High Compatibility")
     mode = st.radio("Seleziona Output:", ["Video (15s)", "Immagine HD"])
     st.divider()
     it_sub = st.text_input("Soggetto (IT):")
@@ -77,10 +73,10 @@ with st.sidebar:
     if st.button("🪄 TRADUCI SCRIPT"):
         if it_sub and it_act:
             t = GoogleTranslator(source='it', target='en')
-            st.session_state['p_en'] = f"{t.translate(it_sub)}, {t.translate(it_act)}, cinematic lighting, high resolution."
+            st.session_state['p_en'] = f"{t.translate(it_sub)}, {t.translate(it_act)}, cinematic lighting, high quality."
             st.success("Testo Tradotto!")
 
-# --- 5. PRODUZIONE ---
+# --- 4. AREA PRODUZIONE ---
 st.title(f"🚀 Workstation: {mode}")
 col_l, col_r = st.columns([1.5, 1])
 
@@ -94,58 +90,46 @@ with col_l:
             st.error("Manca il Token API!")
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-            st.session_state['final_link'] = None
+            st.session_state['res_media'] = None
             
             if mode == "Immagine HD":
                 with st.spinner("Creazione Immagine (Flux)..."):
                     try:
-                        # Usiamo il modello ufficiale di Black Forest Labs
                         out = client.run("black-forest-labs/flux-schnell", input={"prompt": p_final})
-                        st.session_state['final_link'] = str(out[0])
+                        st.session_state['res_media'] = str(out[0])
                     except Exception as e:
-                        st.error(f"Errore Immagine: {e}")
+                        st.error(f"Errore: {e}")
             else:
                 urls = []
-                with st.status("🎬 Generazione Video (Official Engine)...", expanded=True) as status:
-                    # Usiamo un modello video "Official" o ampiamente supportato per evitare il 422
-                    # Google Imagen Video è solitamente blindato contro errori di versione
-                    model_slug = "google-research/imagen-video-fine-tuning"
+                with st.status("🎬 Generazione Video (Minimax)...", expanded=True) as status:
+                    # MINIMAX VIDEO-01: Molto più economico e stabile di Luma
+                    model_path = "minimax/video-01"
                     
                     for i in range(3):
                         try:
                             status.write(f"Produzione clip {i+1}/3...")
-                            # Usiamo il metodo run semplificato per bypassare i check di versione manuali
+                            # Metodo run diretto: il più sicuro contro errori 422
                             prediction = client.run(
-                                "stability-ai/stable-video-diffusion:3f0457148a04944d1887010459523294c777e1e63a34a31940a4555f106ca46f",
-                                input={
-                                    "prompt": f"{p_final}, segment {i+1}",
-                                    "video_length": "14_frames_with_svd_xt"
-                                }
+                                model_path,
+                                input={"prompt": f"{p_final}, part {i+1}"}
                             )
-                            # Estrazione URL
-                            url = prediction[0] if isinstance(prediction, list) else prediction
-                            urls.append(str(url))
+                            # Minimax restituisce l'URL direttamente
+                            urls.append(str(prediction))
                             
                             if i < 2: 
                                 status.write("⏳ Pausa anti-throttle (12s)...")
                                 time.sleep(12)
                         except Exception as e:
-                            # Se fallisce anche questo, proviamo l'ultimo salvagente: AnimateDiff senza versione
-                            status.write("⚠️ Switch a backup engine...")
-                            try:
-                                backup = client.run("lucataco/animate-diff", input={"prompt": p_ready})
-                                urls.append(str(backup))
-                            except:
-                                st.error(f"Errore critico: {e}")
-                                break
+                            st.error(f"Errore clip {i+1}: {e}")
+                            break
                     
                     if len(urls) >= 1:
                         status.write("📦 Montaggio Master...")
-                        st.session_state['final_link'] = stitch_video_master(urls)
+                        st.session_state['res_media'] = stitch_master(urls)
 
 with col_r:
     st.subheader("🎞️ Anteprima")
-    res = st.session_state['final_link']
+    res = st.session_state['res_media']
     if res:
         if mode == "Immagine HD":
             st.image(res)
@@ -158,4 +142,4 @@ with col_r:
     else:
         st.info("In attesa...")
 
-st.caption("v58.0 - The Standard | Official Model Strategy | Sidebar Locked")
+st.caption("v59.0 - Minimax Strategy | Economic & Stable | Sidebar Locked")
