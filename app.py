@@ -148,7 +148,7 @@ with col_l:
                             try:
                                 status.write(f"Produzione clip {i+1}/3 (Tentativo {3-retries})...")
                                 prediction = client.predictions.create(
-                                    model="luma/dream-machine",
+                                    model="lucataco/animate-diff:be2271c58974859ad77019e44c50d758066e4092070c538a08a28f731e8e2c0e",
                                     input={"prompt": f"{prompt_final}, part {i+1}"}
                                 )
                                 while prediction.status not in ["succeeded", "failed"]:
