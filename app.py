@@ -7,7 +7,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v83", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v83.1", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -26,7 +26,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. LOGICA RESET E SESSISIONE
+# 2. LOGICA RESET E SESSIONE
 # ==============================================================================
 if 'v83_prompt' not in st.session_state: st.session_state['v83_prompt'] = ""
 if 'v83_res' not in st.session_state: st.session_state['v83_res'] = None
@@ -37,7 +37,7 @@ def reset_all():
     st.rerun()
 
 # ==============================================================================
-# 3. MATRICE DEGLI STILI (DINAMICA)
+# 3. MATRICE DEGLI STILI (DINAMICA CON NUOVE CATEGORIE)
 # ==============================================================================
 MODALITA_RENDERING = {
     "Fotorealistico": "photorealistic, 8k, highly detailed, realistic textures",
@@ -57,14 +57,17 @@ ATMOSFERE = {
     "Fantasy": "magical glow, epic landscape, mystical atmosphere",
     "Fantascienza": "cyberpunk, futuristic neon, space tech",
     "Manuale Psicologico": "zen, calm watercolor, minimalist balance",
-    "Biografia": "vintage portrait, elegant typography, historical feel"
+    "Biografia": "vintage portrait, elegant typography, historical feel",
+    "Religioso/Teologico": "sacred atmosphere, divine light rays, solemn and majestic composition, classical theological aesthetic",
+    "Spirituale/Esoterico": "mystical vibes, occult symbols, ethereal fog, deep purple and gold tones, enigmatic atmosphere",
+    "Meditazione": "peaceful serenity, soft focus, natural elements, zen harmony, light and airy composition"
 }
 
 # ==============================================================================
 # 4. SIDEBAR: PERSONALIZZAZIONE TOTALE
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v83")
+    st.title("📕 DESIGNER v83.1")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
@@ -72,7 +75,7 @@ with st.sidebar:
     # 1. Scelta Atmosfera
     genere = st.selectbox("1. Atmosfera Editoriale:", list(ATMOSFERE.keys()))
     
-    # 2. Scelta Tipo di Rendering (La tua richiesta)
+    # 2. Scelta Tipo di Rendering
     tipo_render = st.selectbox("2. Stile di Rendering:", list(MODALITA_RENDERING.keys()))
     
     st.divider()
@@ -87,31 +90,34 @@ with st.sidebar:
     a_pos = st.selectbox("Posizione Autore:", ["top", "center", "bottom"], index=2) if use_a else ""
 
     st.divider()
-    desc_it = st.text_area("3. Scena Visiva (IT):", placeholder="Es: Un astronauta su Marte...")
+    desc_it = st.text_area("3. Scena Visiva (IT):", placeholder="Es: Un monaco in cima a una montagna...")
     
     if st.button("🪄 GENERA ARCHITETTURA"):
         if desc_it:
             with st.spinner("Compilazione..."):
-                t = GoogleTranslator(source='it', target='en')
-                scene_en = t.translate(desc_it)
-                
-                # REGOLE TESTO (Forzatura massima)
-                text_block = []
-                if use_t and t_val:
-                    text_block.append(f"STRICTLY PRINT the title text \"\"\"{t_val}\"\"\" in big letters at the {t_pos}.")
-                if use_a and a_val:
-                    text_block.append(f"STRICTLY PRINT the author name \"\"\"{a_val}\"\"\" at the {a_pos}.")
-                
-                # Composizione Prompt finale senza testi fissi non richiesti
-                prompt = (
-                    f"{' '.join(text_block)} "
-                    f"Background: A professional ebook cover with {scene_en}. "
-                    f"Style: {ATMOSFERE[genere]} combined with {MODALITA_RENDERING[tipo_render]}. "
-                    f"Rules: Background must be simple behind the text. No spelling errors. "
-                    f"Do not write '{genere}'."
-                )
-                st.session_state['v83_prompt'] = prompt
-                st.success("Prompt creato!")
+                try:
+                    t = GoogleTranslator(source='it', target='en')
+                    scene_en = t.translate(desc_it)
+                    
+                    # REGOLE TESTO (Forzatura massima con delimitatori)
+                    text_block = []
+                    if use_t and t_val:
+                        text_block.append(f"STRICTLY PRINT the title text \"\"\"{t_val}\"\"\" in big letters at the {t_pos}.")
+                    if use_a and a_val:
+                        text_block.append(f"STRICTLY PRINT the author name \"\"\"{a_val}\"\"\" at the {a_pos}.")
+                    
+                    # Composizione Prompt finale
+                    prompt = (
+                        f"{' '.join(text_block)} "
+                        f"Background: A professional ebook cover with {scene_en}. "
+                        f"Style: {ATMOSFERE[genere]} combined with {MODALITA_RENDERING[tipo_render]}. "
+                        f"Rules: Background must be simple or slightly out of focus behind the text areas to ensure absolute legibility. No spelling errors. "
+                        f"Do not write the word '{genere}' on the cover."
+                    )
+                    st.session_state['v83_prompt'] = prompt
+                    st.success("Prompt creato!")
+                except Exception as e:
+                    st.error(f"Errore traduzione: {e}")
 
 # ==============================================================================
 # 5. WORKSTATION
@@ -120,26 +126,42 @@ st.title("🎨 Custom Creative Workstation")
 col_l, col_r = st.columns([1.2, 1])
 
 with col_l:
-    p_edit = st.text_area("Prompt Finale (puoi modificarlo qui):", value=st.session_state['v83_prompt'], height=250)
+    p_edit = st.text_area("Prompt Finale (EN):", value=st.session_state['v83_prompt'], height=250)
     
     if st.button("🔥 GENERA COPERTINA"):
         if not p_edit:
-            st.error("Crea prima l'architettura!")
+            st.error("Crea prima l'architettura nella sidebar!")
         else:
-            client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-            try:
-                with st.spinner("L'IA sta lavorando..."):
-                    out = client.run(
-                        "black-forest-labs/flux-1.1-pro",
-                        input={"prompt": p_edit, "aspect_ratio": "2:3", "output_format": "jpg"}
-                    )
-                    st.session_state['v83_res'] = str(out)
-            except Exception as e:
-                st.error(f"Errore: {e}")
+            if "REPLICATE_API_TOKEN" not in st.secrets:
+                st.error("API Token non configurato nei Secrets!")
+            else:
+                client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
+                try:
+                    with st.spinner("L'IA sta elaborando la tua copertina..."):
+                        out = client.run(
+                            "black-forest-labs/flux-1.1-pro",
+                            input={
+                                "prompt": p_edit, 
+                                "aspect_ratio": "2:3", 
+                                "output_format": "jpg",
+                                "output_quality": 100
+                            }
+                        )
+                        st.session_state['v83_res'] = str(out)
+                        st.balloons()
+                except Exception as e:
+                    st.error(f"Errore generazione: {e}")
 
 with col_r:
+    st.subheader("🖼️ Anteprima")
     if st.session_state['v83_res']:
         st.image(st.session_state['v83_res'], use_container_width=True)
-        st.download_button("📥 Scarica", requests.get(st.session_state['v83_res']).content, "cover.jpg")
+        st.divider()
+        # Download sicuro
+        try:
+            response = requests.get(st.session_state['v83_res'])
+            st.download_button("📥 Scarica Copertina HD", response.content, "cover.jpg", "image/jpeg")
+        except:
+            st.warning("Errore nel caricamento del file per il download.")
     else:
-        st.info("L'anteprima apparirà qui.")
+        st.info("Configura il progetto e clicca su Genera.")
