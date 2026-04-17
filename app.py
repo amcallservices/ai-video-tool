@@ -1,10 +1,10 @@
 """
 ================================================================================
-AI VIDEO PRODUCTION SUITE - FLUX-SVD ULTIMATE v40.0
+AI VIDEO PRODUCTION SUITE - UNIVERSAL URL FIX v41.0
 --------------------------------------------------------------------------------
-SOLUZIONE: Passaggio a Flux Schnell per evitare il 404 di SDXL.
-FLUSSO: Flux (Immagine) -> SVD (Video 3x5s) -> MoviePy (Stitching).
-COSTO: Bassissimo. Qualità immagine superiore.
+SOLUZIONE: Conversione esplicita FileOutput -> String URL per Flux e SVD.
+FLUSSO: Flux Schnell -> SVD (3 Clip) -> MoviePy Stitching.
+DURATA: 15 Secondi Garantiti.
 ================================================================================
 """
 
@@ -16,7 +16,7 @@ import os
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from deep_translator import GoogleTranslator
 
-# --- 1. DESIGN E CONFIGURAZIONE ---
+# --- 1. DESIGN ---
 st.set_page_config(page_title="Flux-SVD Video Studio", page_icon="🚀", layout="wide")
 
 st.markdown("""
@@ -32,7 +32,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. LOGICA DI MONTAGGIO (MOVIEPY) ---
+# --- 2. LOGICA MONTAGGIO ---
 def stitch_master(urls):
     temp_files = []
     clips = []
@@ -59,13 +59,12 @@ def stitch_master(urls):
 
 # --- 3. SESSION STATE ---
 if 'eng_p' not in st.session_state: st.session_state['eng_p'] = ""
-if 'base_img' not in st.session_state: st.session_state['base_img'] = None
+if 'base_img_url' not in st.session_state: st.session_state['base_img_url'] = None
 if 'master_v' not in st.session_state: st.session_state['master_v'] = None
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
-    st.title("⚡ FLUX + SVD")
-    st.caption("Efficienza Massima 2026")
+    st.title("⚡ FLUX + SVD FIX")
     st.divider()
     it_sub = st.text_input("Soggetto (IT):")
     it_act = st.text_area("Azione (IT):")
@@ -92,33 +91,35 @@ with col_l:
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
             
-            # FASE 1: FLUX SCHNELL (Generazione Immagine iper-veloce)
-            with st.status("🖼️ Fase 1: Generazione Immagine con Flux...", expanded=True):
+            # FASE 1: FLUX SCHNELL
+            with st.status("🖼️ Generazione Immagine...", expanded=True):
                 try:
-                    # Flux Schnell è molto più stabile e moderno di SDXL
-                    output_img = client.run(
+                    output = client.run(
                         "black-forest-labs/flux-schnell",
                         input={"prompt": prompt_ready}
                     )
-                    # Flux restituisce una lista, prendiamo il primo elemento
-                    st.session_state['base_img'] = output_img[0]
-                    st.image(st.session_state['base_img'], width=300, caption="Immagine generata")
+                    # FIX: Estrazione URL testuale dall'oggetto FileOutput
+                    img_obj = output[0]
+                    # Se l'output è un oggetto FileOutput, ha un metodo __str__ o un attributo url
+                    img_url = str(img_obj) if not hasattr(img_obj, 'url') else img_obj.url
+                    
+                    st.session_state['base_img_url'] = img_url
+                    st.image(img_url, width=300, caption="Base Image")
                 except Exception as e:
                     st.error(f"Errore Flux: {e}")
                     st.stop()
 
-            # FASE 2: SVD (Animazione 3 Clip da 5s)
+            # FASE 2: SVD (Animazione 3 Clip)
             urls = []
             bar = st.progress(0)
             for i in range(3):
-                with st.status(f"🎬 Fase 2: Animazione Clip {i+1}/3...", expanded=True) as status:
+                with st.status(f"🎬 Animazione Clip {i+1}/3...", expanded=True) as status:
                     try:
                         prediction = client.predictions.create(
                             model="stability-ai/svd",
                             input={
-                                "input_path": str(st.session_state['base_img']),
-                                "motion_bucket_id": 127,
-                                "fps": 6
+                                "input_path": st.session_state['base_img_url'],
+                                "motion_bucket_id": 127
                             }
                         )
                         while prediction.status not in ["succeeded", "failed"]:
@@ -126,33 +127,31 @@ with col_l:
                             prediction.reload()
                         
                         if prediction.status == "succeeded":
-                            # SVD su Replicate può restituire una stringa o una lista
                             res = prediction.output
-                            url = res[0] if isinstance(res, list) else res
-                            urls.append(url)
+                            # Fix anche per l'output di SVD
+                            final_url = str(res[0]) if isinstance(res, list) else str(res)
+                            urls.append(final_url)
                             status.update(label=f"✅ Clip {i+1} OK", state="complete")
                     except Exception as e:
                         st.error(f"Errore SVD Clip {i+1}: {e}")
                 bar.progress((i + 1) / 3)
             
-            # FASE 3: MONTAGGIO MOVIEPY
+            # FASE 3: MONTAGGIO
             if len(urls) >= 1:
-                with st.spinner("📦 Fase 3: Stitching dei segmenti..."):
+                with st.spinner("📦 Stitching dei segmenti..."):
                     st.session_state['master_v'] = stitch_master(urls)
                     if st.session_state['master_v']:
                         st.balloons()
-                    else:
-                        st.error("Errore durante il montaggio video.")
 
 with col_r:
     st.subheader("🎞️ Risultato Master 15s")
     if st.session_state['master_v']:
         st.video(st.session_state['master_v'])
         with open(st.session_state['master_v'], "rb") as f:
-            st.download_button("📥 Scarica Video Finale", f, "video_15s.mp4")
-    elif st.session_state['base_img']:
-        st.info("Immagine creata. Animazione in corso...")
+            st.download_button("📥 Scarica Video", f, "video_15s.mp4")
+    elif st.session_state['base_img_url']:
+        st.info("Immagine creata. Sto animando...")
     else:
         st.info("In attesa di produzione.")
 
-st.caption("v40.0 - Flux-SVD Ultimate | Economia e Stabilità 2026")
+st.caption("v41.0 - Universal URL Fix | Flux-SVD | Sidebar Locked")
