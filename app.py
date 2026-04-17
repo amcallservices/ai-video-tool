@@ -1,10 +1,10 @@
 """
 ================================================================================
-AI VIDEO PRODUCTION SUITE - UNIVERSAL URL FIX v41.0
+AI VIDEO PRODUCTION SUITE - THROTTLE-RESILIENT v42.0
 --------------------------------------------------------------------------------
-SOLUZIONE: Conversione esplicita FileOutput -> String URL per Flux e SVD.
-FLUSSO: Flux Schnell -> SVD (3 Clip) -> MoviePy Stitching.
-DURATA: 15 Secondi Garantiti.
+SOLUZIONE: Gestione Errore 429 (Rate Limit) tramite pause intelligenti.
+LOGICA: Attesa di 10-15 secondi tra le clip per account con credito < $5.
+DURATA: 15 Secondi Garantiti (3 clip da 5s).
 ================================================================================
 """
 
@@ -16,8 +16,8 @@ import os
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from deep_translator import GoogleTranslator
 
-# --- 1. DESIGN ---
-st.set_page_config(page_title="Flux-SVD Video Studio", page_icon="🚀", layout="wide")
+# --- 1. CONFIGURAZIONE UI ---
+st.set_page_config(page_title="Flux-SVD Resilient Studio", page_icon="🛡️", layout="wide")
 
 st.markdown("""
     <style>
@@ -26,7 +26,7 @@ st.markdown("""
     #MainMenu, footer, header, .stAppDeployButton { visibility: hidden; }
     .main { background-color: #0d1117; }
     div.stButton > button:first-child {
-        background: linear-gradient(180deg, #00d2ff 0%, #3a7bd5 100%);
+        background: linear-gradient(180deg, #f39c12 0%, #e67e22 100%);
         color: white; font-size: 1.3rem; font-weight: 800; height: 5rem; border-radius: 10px; width: 100%;
     }
     </style>
@@ -64,7 +64,8 @@ if 'master_v' not in st.session_state: st.session_state['master_v'] = None
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
-    st.title("⚡ FLUX + SVD FIX")
+    st.title("🛡️ SAFE-MODE STUDIO")
+    st.caption("Anti-Throttle Logic Active")
     st.divider()
     it_sub = st.text_input("Soggetto (IT):")
     it_act = st.text_area("Azione (IT):")
@@ -73,11 +74,11 @@ with st.sidebar:
         if it_sub and it_act:
             ts = GoogleTranslator(source='it', target='en').translate(it_sub)
             ta = GoogleTranslator(source='it', target='en').translate(it_act)
-            st.session_state['eng_p'] = f"{ts}, {ta}, cinematic style, masterwork, highly detailed."
-            st.success("Prompt pronto!")
+            st.session_state['eng_p'] = f"{ts}, {ta}, cinematic style, highly detailed."
+            st.success("Pronto!")
 
 # --- 5. AREA PRODUZIONE ---
-st.title("🚀 Workstation Economica 15s")
+st.title("🚀 Workstation Resiliente 15s")
 col_l, col_r = st.columns([2, 1])
 
 with col_l:
@@ -91,67 +92,66 @@ with col_l:
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
             
-            # FASE 1: FLUX SCHNELL
-            with st.status("🖼️ Generazione Immagine...", expanded=True):
+            # FASE 1: FLUX
+            with st.status("🖼️ Fase 1: Immagine...", expanded=True):
                 try:
-                    output = client.run(
-                        "black-forest-labs/flux-schnell",
-                        input={"prompt": prompt_ready}
-                    )
-                    # FIX: Estrazione URL testuale dall'oggetto FileOutput
-                    img_obj = output[0]
-                    # Se l'output è un oggetto FileOutput, ha un metodo __str__ o un attributo url
-                    img_url = str(img_obj) if not hasattr(img_obj, 'url') else img_obj.url
-                    
+                    output = client.run("black-forest-labs/flux-schnell", input={"prompt": prompt_ready})
+                    img_url = str(output[0]) if not hasattr(output[0], 'url') else output[0].url
                     st.session_state['base_img_url'] = img_url
-                    st.image(img_url, width=300, caption="Base Image")
+                    st.image(img_url, width=300)
                 except Exception as e:
                     st.error(f"Errore Flux: {e}")
                     st.stop()
 
-            # FASE 2: SVD (Animazione 3 Clip)
+            # FASE 2: SVD CON ATTESA (FIX 429)
             urls = []
             bar = st.progress(0)
             for i in range(3):
-                with st.status(f"🎬 Animazione Clip {i+1}/3...", expanded=True) as status:
-                    try:
-                        prediction = client.predictions.create(
-                            model="stability-ai/svd",
-                            input={
-                                "input_path": st.session_state['base_img_url'],
-                                "motion_bucket_id": 127
-                            }
-                        )
-                        while prediction.status not in ["succeeded", "failed"]:
-                            time.sleep(4)
-                            prediction.reload()
-                        
-                        if prediction.status == "succeeded":
-                            res = prediction.output
-                            # Fix anche per l'output di SVD
-                            final_url = str(res[0]) if isinstance(res, list) else str(res)
-                            urls.append(final_url)
-                            status.update(label=f"✅ Clip {i+1} OK", state="complete")
-                    except Exception as e:
-                        st.error(f"Errore SVD Clip {i+1}: {e}")
+                with st.status(f"🎬 Fase 2: Clip {i+1}/3...", expanded=True) as status:
+                    max_retries = 2
+                    for attempt in range(max_retries + 1):
+                        try:
+                            prediction = client.predictions.create(
+                                model="stability-ai/svd",
+                                input={"input_path": st.session_state['base_img_url'], "motion_bucket_id": 127}
+                            )
+                            while prediction.status not in ["succeeded", "failed"]:
+                                time.sleep(5)
+                                prediction.reload()
+                            
+                            if prediction.status == "succeeded":
+                                res = prediction.output
+                                final_url = str(res[0]) if isinstance(res, list) else str(res)
+                                urls.append(final_url)
+                                status.update(label=f"✅ Clip {i+1} OK", state="complete")
+                                
+                                # PAUSA STRATEGICA: Aspettiamo 12 secondi per resettare il Rate Limit di Replicate
+                                if i < 2: 
+                                    st.write("⏳ Pausa per evitare blocchi (Rate Limit)...")
+                                    time.sleep(12) 
+                                break
+                        except Exception as e:
+                            if "429" in str(e) and attempt < max_retries:
+                                st.warning(f"Rilevato Rate Limit. Attesa extra di 15s...")
+                                time.sleep(15)
+                            else:
+                                st.error(f"Errore: {e}")
+                                break
                 bar.progress((i + 1) / 3)
             
             # FASE 3: MONTAGGIO
             if len(urls) >= 1:
-                with st.spinner("📦 Stitching dei segmenti..."):
+                with st.spinner("📦 Fase 3: Stitching..."):
                     st.session_state['master_v'] = stitch_master(urls)
-                    if st.session_state['master_v']:
-                        st.balloons()
+                    if st.session_state['master_v']: st.balloons()
 
 with col_r:
-    st.subheader("🎞️ Risultato Master 15s")
+    st.subheader("🎞️ Risultato")
     if st.session_state['master_v']:
         st.video(st.session_state['master_v'])
         with open(st.session_state['master_v'], "rb") as f:
-            st.download_button("📥 Scarica Video", f, "video_15s.mp4")
+            st.download_button("📥 Scarica", f, "video_15s.mp4")
     elif st.session_state['base_img_url']:
-        st.info("Immagine creata. Sto animando...")
-    else:
-        st.info("In attesa di produzione.")
+        st.info("Immagine OK. Elaborazione video rallentata per sicurezza...")
 
-st.caption("v41.0 - Universal URL Fix | Flux-SVD | Sidebar Locked")
+st.caption("v42.0 - Throttle-Resilient | Flux-SVD | Safe-Pause Active")
