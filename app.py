@@ -15,17 +15,17 @@ if "REPLICATE_API_TOKEN" in st.secrets:
     api_token = st.secrets["REPLICATE_API_TOKEN"]
     client = replicate.Client(api_token=api_token)
 else:
-    st.error("⚠️ API Token non configurato nei Secrets di Streamlit!")
+    st.error("⚠️ API Token non trovato! Vai in Settings > Secrets e aggiungi REPLICATE_API_TOKEN.")
     st.stop()
 
 # 3. Interfaccia Utente
 st.title("🎬 AI Video Generator")
-st.write("Genera video realistici dall'intelligenza artificiale.")
+st.write("Genera brevi video (2-5 secondi) partendo da un'idea testuale.")
 
 with st.form("generator_form"):
     prompt = st.text_area(
-        "Descrizione del video (Inglese consigliato):",
-        placeholder="A golden retriever puppy running in a field of sunflowers, 4k, cinematic...",
+        "Descrizione del video (Inglese):",
+        placeholder="A rocket launching into space, realistic style, 4k...",
         height=120
     )
     
@@ -37,27 +37,24 @@ if submit_button:
         st.warning("Inserisci una descrizione!")
     else:
         try:
-            with st.spinner("🚀 Generazione in corso... (circa 2 minuti)"):
+            with st.spinner("🚀 Generazione in corso con Stable Video Diffusion..."):
                 
-                # UTILIZZIAMO L'ID VERSIONE FISSO PER EVITARE IL 404
-                # Modello: CogVideoX-5b di lucataco
-                model_version = "lucataco/cogvideox-5b:096504958319f35315570072b0c3603d1c4728511d739c3629471f28b2488737"
-                
+                # Utilizziamo un modello ufficiale di Stability AI (molto più stabile)
+                # Questo modello genera video partendo da un prompt testuale
                 output = client.run(
-                    model_version,
+                    "stability-ai/video-ldm:3f0457d9eddadca94820921444827f0e0103dd90a780bc0642f883f360706222",
                     input={
                         "prompt": prompt,
-                        "num_frames": 81,
-                        "fps": 8,
-                        "guidance_scale": 6
+                        "steps": 25,
+                        "fps": 6
                     }
                 )
 
-                # Gestione dell'output
                 if output:
+                    # Spesso l'output è una lista, prendiamo il primo elemento
                     video_url = output if isinstance(output, str) else output[0]
                     
-                    st.success("✅ Video creato!")
+                    st.success("✅ Video creato con successo!")
                     st.video(video_url)
 
                     # Bottone di Download
@@ -69,14 +66,12 @@ if submit_button:
                         mime="video/mp4"
                     )
                 else:
-                    st.error("L'AI non ha restituito alcun video. Riprova con un prompt diverso.")
+                    st.error("L'AI non ha restituito alcun file. Riprova.")
 
         except Exception as e:
             st.error(f"Si è verificato un errore: {e}")
-            if "401" in str(e):
-                st.info("Controlla che il tuo Token sia corretto e che tu abbia credito su Replicate.")
-            elif "404" in str(e):
-                st.info("Il modello è temporaneamente offline o l'ID versione è cambiato.")
+            if "422" in str(e):
+                st.info("Questo ID versione è scaduto. Prova a cercare 'Stable Video Diffusion' su Replicate e usa l'ultima versione disponibile.")
 
 st.markdown("---")
-st.caption("Powered by Replicate & Streamlit")
+st.caption("Powered by Stability AI & Streamlit")
