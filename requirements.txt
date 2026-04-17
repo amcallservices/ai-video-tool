@@ -3,3 +3,4 @@ replicate
 requests
 deep-translator
 moviepy
+replicate
