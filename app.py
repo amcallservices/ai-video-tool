@@ -1,10 +1,10 @@
 """
 ================================================================================
-AI MULTIMEDIA STUDIO - UNIVERSAL-BRIDGE v54.0
+AI MULTIMEDIA STUDIO - THE ROCK v55.0
 --------------------------------------------------------------------------------
 SOLUZIONE: Passaggio a AnimateDiff (Engine ultra-compatibile).
-OBIETTIVO: Eliminare errori 404, 422 e 500.
-DURATA: 3 clip unite per 15 secondi totali.
+OBIETTIVO: Eliminare errori 404, 422 e 500 in modo definitivo.
+LOGICA: Video 15s (3 clip) con switch Immagine HD (Flux).
 ================================================================================
 """
 
@@ -17,8 +17,8 @@ import uuid
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from deep_translator import GoogleTranslator
 
-# --- 1. CONFIGURAZIONE UI ---
-st.set_page_config(page_title="AI Studio v54", page_icon="🚀", layout="wide")
+# --- 1. SETUP UI ---
+st.set_page_config(page_title="AI Studio v55 - The Rock", page_icon="🛡️", layout="wide")
 
 st.markdown("""
     <style>
@@ -27,13 +27,13 @@ st.markdown("""
     #MainMenu, footer, header, .stAppDeployButton { visibility: hidden; }
     .main { background-color: #0d1117; color: #c9d1d9; }
     div.stButton > button:first-child {
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
         color: white; font-size: 1.2rem; font-weight: 800; height: 4.5rem; border-radius: 10px; width: 100%; border: none;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. LOGICA MONTAGGIO VIDEO ---
+# --- 2. MONTAGGIO VIDEO ---
 def stitch_video_master(urls):
     session_id = str(uuid.uuid4())[:6]
     temp_files, clips = [], []
@@ -58,14 +58,13 @@ def stitch_video_master(urls):
             if os.path.exists(f): os.remove(f)
     return None
 
-# --- 3. SESSION STATE ---
-if 'eng_prompt' not in st.session_state: st.session_state['eng_prompt'] = ""
-if 'final_res' not in st.session_state: st.session_state['final_res'] = None
+# --- 3. SIDEBAR ---
+if 'eng_p' not in st.session_state: st.session_state['eng_p'] = ""
+if 'res' not in st.session_state: st.session_state['res'] = None
 
-# --- 4. SIDEBAR ---
 with st.sidebar:
-    st.title("🛡️ UNIVERSAL HUB")
-    st.caption("v54.0 - High Compatibility Mode")
+    st.title("🛡️ THE ROCK HUB")
+    st.caption("v55.0 - High Stability Mode")
     mode = st.radio("Seleziona Output:", ["Video (15s)", "Immagine HD"])
     st.divider()
     it_sub = st.text_input("Soggetto (IT):")
@@ -73,17 +72,16 @@ with st.sidebar:
     
     if st.button("🪄 TRADUCI SCRIPT"):
         if it_sub and it_act:
-            with st.spinner("Traduzione..."):
-                t = GoogleTranslator(source='it', target='en')
-                st.session_state['eng_prompt'] = f"{t.translate(it_sub)}, {t.translate(it_act)}, cinematic lighting, 8k."
-                st.success("Prompt Pronto!")
+            t = GoogleTranslator(source='it', target='en')
+            st.session_state['eng_p'] = f"{t.translate(it_sub)}, {t.translate(it_act)}, cinematic lighting, 8k."
+            st.success("Prompt Pronto!")
 
-# --- 5. PRODUZIONE ---
+# --- 4. PRODUZIONE ---
 st.title(f"🚀 Workstation: {mode}")
 col_l, col_r = st.columns([1.5, 1])
 
 with col_l:
-    p_final = st.text_area("Prompt Tecnico (EN):", value=st.session_state['eng_prompt'], height=150)
+    p_final = st.text_area("Prompt Tecnico (EN):", value=st.session_state['eng_p'], height=150)
     
     if st.button("🔥 GENERA ORA"):
         if not p_final:
@@ -92,34 +90,33 @@ with col_l:
             st.error("Manca il Token API!")
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-            st.session_state['final_res'] = None
+            st.session_state['res'] = None
             
             if mode == "Immagine HD":
-                with st.spinner("Creazione Immagine..."):
+                with st.spinner("Creazione Immagine con Flux..."):
                     try:
-                        # FLUX è il più stabile per le immagini
                         out = client.run("black-forest-labs/flux-schnell", input={"prompt": p_final})
-                        st.session_state['final_res'] = str(out[0])
+                        st.session_state['res'] = str(out[0])
                     except Exception as e:
                         st.error(f"Errore Immagine: {e}")
             else:
                 urls = []
                 with st.status("🎬 Sequenziamento Video...", expanded=True) as status:
-                    # Usiamo AnimateDiff: il modello più compatibile e stabile
+                    # AnimateDiff: Percorso stabile e universale
                     model_path = "lucataco/animate-diff:be2271c58974859ad77019e44c50d758066e4092070c538a08a28f731e8e2c0e"
                     
                     for i in range(3):
                         try:
                             status.write(f"Produzione clip {i+1}/3...")
-                            # Esecuzione diretta per massimizzare la compatibilità
+                            # Esecuzione diretta per bypassare errori di versione
                             prediction = client.run(
                                 model_path,
                                 input={
-                                    "prompt": f"{p_final}, segment {i+1}",
+                                    "prompt": f"{p_final}, part {i+1}",
                                     "n_frames": 16
                                 }
                             )
-                            # Estrazione URL (AnimateDiff restituisce l'URL direttamente)
+                            # AnimateDiff restituisce l'URL direttamente come stringa
                             urls.append(str(prediction))
                             
                             if i < 2: 
@@ -131,21 +128,20 @@ with col_l:
                     
                     if len(urls) >= 1:
                         status.write("📦 Unione dei segmenti...")
-                        st.session_state['final_res'] = stitch_video_master(urls)
+                        st.session_state['res'] = stitch_video_master(urls)
 
 with col_r:
     st.subheader("🎞️ Anteprima")
-    res = st.session_state['final_res']
-    if res:
+    if st.session_state['res']:
         if mode == "Immagine HD":
-            st.image(res)
-            st.link_button("📥 Scarica", res)
+            st.image(st.session_state['res'])
+            st.link_button("📥 Apri Immagine", st.session_state['res'])
         else:
-            if os.path.exists(res):
-                st.video(res)
-                with open(res, "rb") as f:
+            if os.path.exists(st.session_state['res']):
+                st.video(st.session_state['res'])
+                with open(st.session_state['res'], "rb") as f:
                     st.download_button("📥 Scarica Video 15s", f, "video_final.mp4")
     else:
         st.info("In attesa di produzione...")
 
-st.caption("v54.0 - Universal-Bridge | High Stability | Sidebar Locked")
+st.caption("v55.0 - The Rock | Universal Stability | Sidebar Locked")
