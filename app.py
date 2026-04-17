@@ -7,7 +7,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E STILE
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer Pro v68", page_icon="🎨", layout="wide")
+st.set_page_config(page_title="Ebook Designer v69", page_icon="🧪", layout="wide")
 
 st.markdown("""
     <style>
@@ -15,14 +15,12 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #161b22; border-right: 1px solid #30363d; }
     #MainMenu, footer, header { visibility: hidden; }
     
-    /* Input Styling */
     .stTextInput input, .stTextArea textarea, .stSelectbox div {
         background-color: #0d1117 !important;
         color: #58a6ff !important;
         border: 1px solid #30363d !important;
     }
 
-    /* Pulsante Generatore */
     div.stButton > button:first-child {
         background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
         color: white; font-size: 1.2rem; font-weight: 800; height: 4rem;
@@ -39,94 +37,78 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. SIDEBAR: LOGICA DI POSIZIONAMENTO TESTO
+# 2. SIDEBAR: CATEGORIE PERSONALIZZATE E LAYOUT
 # ==============================================================================
 with st.sidebar:
-    st.title("📚 DESIGNER v68")
-    st.caption("Personalizza Layout e Testo")
+    st.title("📚 DESIGNER v69")
+    st.caption("Categorie Letterarie Custom")
     st.divider()
     
-    # 1. Scelta Genere
+    # Le tue categorie specifiche
     lista_generi = [
-        "Thriller / Noir", "Fantasy Epico", "Sci-Fi / Cyberpunk",
-        "Romanzo Rosa", "Horror / Gotico", "Saggistica / Business", 
-        "Storico", "Giallo", "Fiabe per Bambini"
+        "Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico",
+        "Business", "Romanzo Rosa", "Thriller", 
+        "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia"
     ]
-    genre = st.selectbox("Genere:", lista_generi)
+    genre = st.selectbox("Seleziona Categoria:", lista_generi)
     
     st.divider()
     
-    # 2. Logica Titolo
+    # Logica Testo
     show_title = st.checkbox("Inserisci Titolo", value=True)
-    if show_title:
-        title_text = st.text_input("Titolo:", placeholder="Titolo del libro")
-        title_pos = st.selectbox("Posizione Titolo:", ["In alto", "Al centro", "In basso"], index=0)
-    else:
-        title_text = ""
-        title_pos = ""
+    title_text = st.text_input("Titolo:", placeholder="Titolo del libro") if show_title else ""
+    title_pos = st.selectbox("Posizione Titolo:", ["In alto", "Al centro", "In basso"]) if show_title else ""
 
-    # 3. Logica Autore
-    show_author = st.checkbox("Inserisci Nome Autore", value=True)
-    if show_author:
-        author_text = st.text_input("Autore:", placeholder="Nome dell'autore")
-        author_pos = st.selectbox("Posizione Autore:", ["In alto", "Al centro", "In basso"], index=2)
-    else:
-        author_text = ""
-        author_pos = ""
+    show_author = st.checkbox("Inserisci Autore", value=True)
+    author_text = st.text_input("Autore:", placeholder="Nome autore") if show_author else ""
+    author_pos = st.selectbox("Posizione Autore:", ["In alto", "Al centro", "In basso"], index=2) if show_author else ""
 
     st.divider()
     desc_it = st.text_area("Descrizione Scena (IT):", placeholder="Cosa deve apparire nell'immagine?")
     
     if st.button("🪄 GENERA LAYOUT"):
         if desc_it:
-            with st.spinner("Creazione prompt grafico..."):
+            with st.spinner("Creazione prompt..."):
                 t = GoogleTranslator(source='it', target='en')
                 scene_en = t.translate(desc_it)
                 
-                # Costruzione istruzioni testuali
                 text_instructions = []
                 if show_title and title_text:
-                    text_instructions.append(f"The title '{title_text}' written in large, stylish font at the {title_pos.replace('In ', '').replace('Al ', '').lower()} of the cover.")
+                    text_instructions.append(f"Title '{title_text}' at the {title_pos.replace('In ', '').replace('Al ', '').lower()}.")
                 if show_author and author_text:
-                    text_instructions.append(f"The author name '{author_text}' written in elegant font at the {author_pos.replace('In ', '').replace('Al ', '').lower()} of the cover.")
+                    text_instructions.append(f"Author '{author_text}' at the {author_pos.replace('In ', '').replace('Al ', '').lower()}.")
                 
                 prompt_base = (
-                    f"A professional ebook cover for a {genre} book. "
-                    f"Main scene: {scene_en}. "
+                    f"Professional ebook cover for a {genre}. "
+                    f"Scene: {scene_en}. "
                     f"{' '.join(text_instructions)} "
-                    f"High quality graphic design, cinematic lighting, 8k, photorealistic."
+                    f"Clean professional typography, cinematic lighting, 8k, photorealistic."
                 )
                 st.session_state['p_final'] = prompt_base
-                st.success("Layout pronto!")
+                st.success("Pronto!")
 
 # ==============================================================================
-# 3. AREA PRODUZIONE
+# 3. WORKSTATION E PREVIEW
 # ==============================================================================
-st.title("🎨 Workstation Creativa")
+st.title("🎨 Produzione Copertine")
 col_l, col_r = st.columns([1.2, 1])
 
 if 'p_final' not in st.session_state: st.session_state['p_final'] = ""
 if 'res_url' not in st.session_state: st.session_state['res_url'] = None
 
 with col_l:
-    p_area = st.text_area("Prompt Finale (Modificabile):", value=st.session_state['p_final'], height=200)
+    p_area = st.text_area("Prompt Tecnico:", value=st.session_state['p_final'], height=200)
     
-    if st.button("🔥 GENERA COPERTINA"):
+    if st.button("🔥 GENERA COPERTINA HD"):
         if not p_area:
             st.error("Configura il layout nella sidebar!")
-        elif "REPLICATE_API_TOKEN" not in st.secrets:
-            st.error("Manca il Token API!")
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
             try:
-                with st.spinner("Generazione in corso (Flux Pro)..."):
+                with st.spinner("Generazione in corso..."):
                     output = client.run(
                         "black-forest-labs/flux-1.1-pro",
-                        input={
-                            "prompt": p_area,
-                            "aspect_ratio": "2:3",
-                            "output_format": "jpg"
-                        }
+                        input={"prompt": p_area, "aspect_ratio": "2:3", "output_format": "jpg"}
                     )
                     st.session_state['res_url'] = str(output)
                     st.balloons()
@@ -134,17 +116,10 @@ with col_l:
                 st.error(f"Errore: {e}")
 
 with col_r:
-    st.subheader("🖼️ Risultato Finale")
+    st.subheader("🖼️ Anteprima Risultato")
     if st.session_state['res_url']:
         st.markdown(f'<img src="{st.session_state["res_url"]}" class="ebook-preview">', unsafe_allow_html=True)
         st.divider()
-        st.download_button(
-            label="📥 Scarica Copertina HD",
-            data=requests.get(st.session_state['res_url']).content,
-            file_name="cover_ebook.jpg",
-            mime="image/jpeg"
-        )
+        st.download_button("📥 Scarica Copertina", requests.get(st.session_state['res_url']).content, "cover.jpg", "image/jpeg")
     else:
-        st.info("Configura il titolo e la posizione per iniziare.")
-
-st.caption("v68.0 - Custom Layout Edition | Flux 1.1 Pro Engine")
+        st.info("Configura e genera per vedere l'anteprima.")
