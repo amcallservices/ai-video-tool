@@ -2,97 +2,97 @@ import streamlit as st
 import replicate
 import os
 import requests
-import time
 
-# 1. Configurazione della pagina (deve essere la prima istruzione Streamlit)
+# 1. Configurazione della pagina
 st.set_page_config(
-    page_title="AI Video Generator", 
-    page_icon="🎥",
+    page_title="AI Video Studio", 
+    page_icon="🎬",
     layout="centered"
 )
 
-# 2. Gestione dell'autenticazione tramite Secrets
-# Assicurati di aver impostato REPLICATE_API_TOKEN nei Secrets di Streamlit Cloud
+# 2. Controllo Autenticazione (Secrets di Streamlit Cloud)
 if "REPLICATE_API_TOKEN" in st.secrets:
-    replicate_api_token = st.secrets["REPLICATE_API_TOKEN"]
+    api_token = st.secrets["REPLICATE_API_TOKEN"]
+    # Inizializziamo il client ufficiale
+    client = replicate.Client(api_token=api_token)
 else:
-    st.error("ERRORE: API Token non trovato! Vai in Settings > Secrets e aggiungi REPLICATE_API_TOKEN.")
+    st.error("⚠️ API Token non configurato! Vai in Settings > Secrets e aggiungi REPLICATE_API_TOKEN.")
     st.stop()
 
-# Inizializza il client Replicate
-client = replicate.Client(api_token=replicate_api_token)
+# 3. Interfaccia Utente
+st.title("🎬 AI Video Generator")
+st.write("Inserisci una descrizione e l'AI creerà un video di pochi secondi per te.")
 
-# 3. Interfaccia Grafica
-st.title("🎥 AI Video Studio")
-st.markdown("Inserisci una descrizione testuale e l'intelligenza artificiale genererà un video per te.")
-
-# Sidebar per informazioni e parametri
 with st.sidebar:
-    st.header("Impostazioni")
-    durata = st.select_slider(
-        "Qualità / Numero Frame",
-        options=[41, 81, 121],
-        value=81,
-        help="Più frame rendono il video più lungo ma la generazione sarà più lenta."
+    st.header("Opzioni Modello")
+    # Ho impostato il modello CogVideoX che è molto potente e bilanciato
+    model_choice = st.selectbox(
+        "Scegli il motore AI:",
+        ["lucataco/cogvideox-5b", "stability-ai/stable-video-diffusion"]
     )
-    st.info("Utilizziamo il modello CogVideoX-5b, ottimizzato per velocità e qualità.")
+    st.info("Nota: La generazione richiede solitamente da 1 a 3 minuti.")
 
-# Form principale
-with st.form("my_form"):
-    prompt_utente = st.text_area(
-        "Cosa vuoi vedere nel video?",
-        placeholder="Esempio: Un gatto spaziale che fluttua in una stazione orbitale, stile pixel art, luci neon..."
+# Form di input
+with st.form("generator_form"):
+    prompt = st.text_area(
+        "Descrizione del video (in inglese funziona meglio):",
+        placeholder="A majestic dragon flying over a snowy mountain range, cinematic style, 4k...",
+        height=120
     )
     
-    # Trucco per migliorare il prompt automaticamente
-    improve_prompt = st.checkbox("Migliora automaticamente il prompt (aggiunge dettagli cinematografici)", value=True)
-    
-    submitted = st.form_submit_button("Genera Video")
+    submit_button = st.form_submit_button("Genera Video ✨")
 
-# 4. Logica di Generazione
-if submitted:
-    if not prompt_utente:
-        st.warning("Per favore, inserisci una descrizione.")
+# 4. Logica di Esecuzione
+if submit_button:
+    if not prompt:
+        st.warning("Scrivi qualcosa prima di generare!")
     else:
         try:
-            # Raffinamento del prompt
-            final_prompt = prompt_utente
-            if improve_prompt:
-                final_prompt = f"{prompt_utente}, highly detailed, cinematic lighting, 4k resolution, smooth motion, masterpiece."
+            with st.spinner("🚀 L'AI sta elaborando il video... Prendi un caffè, quasi fatto!"):
+                
+                # Chiamata API dinamica in base al modello scelto
+                if model_choice == "lucataco/cogvideox-5b":
+                    output = client.run(
+                        model_choice,
+                        input={
+                            "prompt": prompt,
+                            "num_frames": 81,
+                            "fps": 8,
+                            "guidance_scale": 6
+                        }
+                    )
+                else:
+                    # Configurazione per Stable Video Diffusion
+                    output = client.run(
+                        "stability-ai/stable-video-diffusion:3f0457d9eddadca94820921444827f0e0103dd90a780bc0642f883f360706222",
+                        input={"video_length": "14_frames_with_svd"}
+                    )
 
-            with st.spinner("🎬 L'AI sta lavorando... Il video sarà pronto tra circa 60-90 secondi."):
-                # Chiamata al modello
-                # Modello: CogVideoX-5b (ottimo rapporto qualità/costo)
-                output = client.run(
-                    "lucataco/cogvideox-5b:096504958319f35315570072b0c3603d1c4728511d739c3629471f28b2488737",
-                    input={
-                        "prompt": final_prompt,
-                        "num_frames": durata,
-                        "fps": 8,
-                        "guidance_scale": 6
-                    }
-                )
-
-                # Gestione dell'output (solitamente è un URL diretto)
+                # Recupero URL del video
                 video_url = output if isinstance(output, str) else output[0]
 
-                # Visualizzazione del risultato
-                st.success("✨ Video generato!")
+                # Visualizzazione Risultato
+                st.success("✅ Generazione completata!")
                 st.video(video_url)
 
-                # Download button
-                video_bytes = requests.get(video_url).content
+                # Bottone di Download
+                video_data = requests.get(video_url).content
                 st.download_button(
-                    label="⬇️ Scarica il video",
-                    data=video_bytes,
-                    file_name="video_ai_generato.mp4",
+                    label="💾 Scarica Video",
+                    data=video_data,
+                    file_name="video_generato.mp4",
                     mime="video/mp4"
                 )
 
         except Exception as e:
-            st.error(f"Si è verificato un errore: {str(e)}")
-            st.info("Suggerimento: Controlla che il tuo account Replicate abbia credito sufficiente.")
+            # Gestione errori specifica per i permessi/versioni
+            if "422" in str(e):
+                st.error("Errore 422: Il modello scelto non è al momento disponibile o richiede l'accettazione dei termini su Replicate.com.")
+            elif "401" in str(e):
+                st.error("Errore 401: Il tuo API Token non è valido. Ricontrolla i Secrets.")
+            else:
+                st.error(f"Si è verificato un errore inaspettato: {e}")
 
 # Footer
 st.markdown("---")
-st.caption("Creato con Streamlit + Replicate API")
+st.caption("Creato con Streamlit & Replicate API")
