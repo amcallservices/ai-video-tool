@@ -2,8 +2,6 @@ import streamlit as st
 import replicate
 import requests
 import os
-import re
-from collections import Counter
 from deep_translator import GoogleTranslator
 
 # ==============================================================================
@@ -24,13 +22,6 @@ st.markdown("""
         background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
         color: white; font-size: 1.1rem; font-weight: 800; height: 3.5rem; border-radius: 10px; border: none;
     }
-    .linter-box {
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #30363d;
-        background-color: #161b22;
-        margin-top: 20px;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -44,43 +35,6 @@ def reset_all():
     for key in st.session_state.keys():
         del st.session_state[key]
     st.rerun()
-
-# --- MIGLIORIA: FUNZIONE ANALISI QUALITÀ TESTO ---
-def analizza_qualita_prosa(testo):
-    """Analizza il testo per trovare ripetizioni e problemi di leggibilità"""
-    if not testo or len(testo) < 50:
-        return "⚠️ Testo troppo breve per un'analisi accurata."
-    
-    parole = re.findall(r'\b\w+\b', testo.lower())
-    frasi = re.split(r'[.!?]+', testo)
-    
-    errori = []
-    # Analisi Ripetizioni Ravvicinate (finestra di 12 parole)
-    finestra = 12
-    ripetizioni = []
-    for i in range(len(parole) - finestra):
-        target = parole[i]
-        if len(target) > 3:
-            if target in parole[i+1 : i+finestra]:
-                ripetizioni.append(target)
-    
-    if ripetizioni:
-        top = Counter(ripetizioni).most_common(3)
-        errori.append(f"🔄 **Ripetizioni ravvicinate**: '{', '.join([p[0] for p in top])}'")
-    
-    # Frasi lunghe
-    lunghe = [f for f in frasi if len(f.split()) > 30]
-    if lunghe:
-        errori.append(f"📏 **{len(lunghe)} frasi troppo lunghe** (oltre 30 parole).")
-    
-    # Avverbi eccessivi (stile pesante)
-    avverbi = [p for p in parole if p.endswith('mente') and len(p) > 7]
-    if len(avverbi) > (len(parole) * 0.02):
-        errori.append(f"✍️ **Stile pesante**: troppi avverbi in '-mente' ({len(avverbi)}).")
-
-    if not errori:
-        return "✅ **Qualità eccellente!** Lo stile è fluido e privo di ripetizioni evidenti."
-    return "\n\n".join(errori)
 
 # ==============================================================================
 # 3. MATRICE DEGLI STILI (DINAMICA CON NUOVE CATEGORIE)
@@ -145,12 +99,14 @@ with st.sidebar:
                     t = GoogleTranslator(source='it', target='en')
                     scene_en = t.translate(desc_it)
                     
+                    # CORREZIONE TIPOGRAFICA
                     text_block = []
                     if use_t and t_val:
                         text_block.append(f"The cover must display the exact text \"{t_val}\" clearly as the main title at the {t_pos}.")
                     if use_a and a_val:
                         text_block.append(f"The cover must display the exact author name \"{a_val}\" clearly at the {a_pos}.")
                     
+                    # Composizione Prompt finale
                     prompt = (
                         f"TYPOGRAPHY OVERLAY: {' '.join(text_block)} "
                         f"BACKGROUND: A professional ebook cover with {scene_en}. "
@@ -158,29 +114,31 @@ with st.sidebar:
                         f"MANDATORY RULES: 1. Render the text exactly as written in quotes. 2. No extra characters or invented letters. 3. High contrast between text and background. 4. Do not write the word '{genere}' on the image."
                     )
                     st.session_state['v83_prompt'] = prompt
-                    st.success("Prompt creato con correzione tipografica!")
+                    st.success("Prompt creato con successo!")
                 except Exception as e:
                     st.error(f"Errore traduzione: {e}")
 
 # ==============================================================================
-# 5. WORKSTATION
+# 5. WORKSTATION GENERAZIONE
 # ==============================================================================
 st.title("🎨 Custom Creative Workstation")
 col_l, col_r = st.columns([1.2, 1])
 
 with col_l:
-    p_edit = st.text_area("Prompt Finale (EN):", value=st.session_state['v83_prompt'], height=250)
+    st.subheader("📝 Prompt Configurator")
+    p_edit = st.text_area("Prompt Finale per l'IA (EN):", value=st.session_state['v83_prompt'], height=300)
     
-    if st.button("🔥 GENERA COPERTINA"):
+    if st.button("🔥 GENERA COPERTINA HD"):
         if not p_edit:
-            st.error("Crea prima l'architettura nella sidebar!")
+            st.error("Per favore, configura prima l'architettura nella sidebar a sinistra!")
         else:
             if "REPLICATE_API_TOKEN" not in st.secrets:
-                st.error("API Token non configurato nei Secrets!")
+                st.error("Errore: REPLICATE_API_TOKEN non trovato nei Secrets di Streamlit.")
             else:
                 client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
                 try:
-                    with st.spinner("L'IA sta elaborando la tua copertina..."):
+                    with st.spinner("L'IA sta dipingendo il tuo capolavoro... attendi qualche secondo."):
+                        # Utilizzo del modello allo stato dell'arte Flux 1.1 Pro
                         out = client.run(
                             "black-forest-labs/flux-1.1-pro",
                             input={
@@ -193,25 +151,24 @@ with col_l:
                         st.session_state['v83_res'] = str(out)
                         st.balloons()
                 except Exception as e:
-                    st.error(f"Errore generazione: {e}")
-
-    # --- MIGLIORIA: AREA ANALISI TESTO MANOSCRITTO ---
-    st.divider()
-    st.subheader("🔍 Controllo Qualità Manoscritto")
-    testo_per_linter = st.text_area("Incolla qui un capitolo per analizzarne la qualità editoriale:", height=300)
-    if st.button("Analizza Stile e Bozza"):
-        risultato = analizza_qualita_prosa(testo_per_linter)
-        st.markdown(f'<div class="linter-box">{risultato}</div>', unsafe_allow_html=True)
+                    st.error(f"Errore tecnico durante la generazione: {e}")
 
 with col_r:
-    st.subheader("🖼️ Anteprima")
+    st.subheader("🖼️ Anteprima Risultato")
     if st.session_state['v83_res']:
+        # Visualizzazione immagine generata
         st.image(st.session_state['v83_res'], use_container_width=True)
         st.divider()
         try:
+            # Download dell'immagine tramite pulsante
             response = requests.get(st.session_state['v83_res'])
-            st.download_button("📥 Scarica Copertina HD", response.content, "cover.jpg", "image/jpeg")
+            st.download_button(
+                label="📥 Scarica Copertina in Alta Risoluzione",
+                data=response.content,
+                file_name="ebook_cover_antonino.jpg",
+                mime="image/jpeg"
+            )
         except:
-            st.warning("Errore nel caricamento del file per il download.")
+            st.warning("Impossibile scaricare l'immagine al momento.")
     else:
-        st.info("Configura il progetto e clicca su Genera.")
+        st.info("Configura i parametri nella sidebar e clicca su 'Genera Copertina HD' per visualizzare l'anteprima.")
