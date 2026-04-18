@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN (INVARIATO)
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v87.0 - Narrative Fidelity", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v88.0 - Ironclad Typography", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -79,17 +79,8 @@ class PDFSemanticPsychologyAnalyzer:
             system_prompt = f"""
             Sei un esperto di analisi narrativa e Art Director editoriale. 
             Il tuo compito è analizzare questo estratto e creare un 'Visual Concept' per la copertina che sia profondamente attinente alla storia.
-            
-            LINEE GUIDA:
-            1. Trova il SOGGETTO CENTRALE (personaggio o oggetto chiave) del racconto.
-            2. Definisci l'ATMOSFERA (cupa, solare, epica) basandoti sulle parole dell'autore.
-            3. Applica la PSICOLOGIA DEL COLORE e gli ARCHETIPI giusti.
-            
             ESTRATTO LIBRO: {text[:6000]}
-            
-            REGOLE DI OUTPUT: 
-            Scrivi SOLO la scena visiva in 3 frasi in italiano. 
-            Includi dettagli su: Soggetto principale, Sfondo, e palette Colori.
+            REGOLE: Scrivi SOLO la scena visiva in 3 frasi in italiano (soggetto, sfondo, colori).
             """
             output = client.run(
                 "meta/meta-llama-3-8b-instruct",
@@ -128,10 +119,10 @@ ATMOSFERE = {
 }
 
 # ==============================================================================
-# 5. SIDEBAR: COERENZA TESTUALE FEDELE (AGGIORNATO)
+# 5. SIDEBAR: INTEGRAZIONE TASSATIVA TESTO (AGGIORNATO)
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v87.1")
+    st.title("📕 DESIGNER v88.0")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
@@ -140,7 +131,6 @@ with st.sidebar:
     
     st.divider()
     
-    # Checkbox e Input Testuali
     use_t = st.checkbox("Abilita Inserimento Titolo", value=True)
     t_val = st.text_input("Testo Titolo:", "TITOLO ESEMPIO") if use_t else ""
     t_pos = st.selectbox("Posizione Titolo:", ["top", "center", "bottom"]) if use_t else ""
@@ -154,25 +144,25 @@ with st.sidebar:
     # Modulo PDF
     st.markdown('<div class="pdf-uploader-box">', unsafe_allow_html=True)
     st.markdown("📄 **Analisi Narrativa & Psicologica**")
-    uploaded_pdf = st.file_uploader("Carica il tuo PDF per una profilazione attinente:", type=["pdf"])
+    uploaded_pdf = st.file_uploader("Carica il tuo PDF:", type=["pdf"])
     
     if uploaded_pdf is not None:
         if st.button("🧠 Avvia Profilazione Narrativa"):
             if "REPLICATE_API_TOKEN" not in st.secrets:
                 st.error("Token mancante!")
             else:
-                with st.spinner("Analisi profonda del racconto in corso..."):
+                with st.spinner("Analisi in corso..."):
                     txt = PDFSemanticPsychologyAnalyzer.extract_text_from_pdf(uploaded_pdf)
                     if txt:
                         ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(txt, st.secrets["REPLICATE_API_TOKEN"])
                         if ai_scene:
                             st.session_state['auto_desc'] = ai_scene
-                            st.success("Scena attinente al racconto generata!")
+                            st.success("Scena generata correttamente!")
     st.markdown('</div>', unsafe_allow_html=True)
 
     desc_it = st.text_area("3. Scena Visiva (IT):", value=st.session_state['auto_desc'])
     
-    # --- INTEGRAZIONE: FEDELTÀ TESTUALE LETTERALE ---
+    # --- INTEGRAZIONE TASSATIVA: FORZATURA DOPPIA DEL TESTO ---
     if st.button("🪄 GENERA ARCHITETTURA"):
         if desc_it:
             with st.spinner("Compilazione..."):
@@ -180,24 +170,24 @@ with st.sidebar:
                     t = GoogleTranslator(source='it', target='en')
                     scene_en = t.translate(desc_it)
                     
-                    # Costruzione blocco tipografico con istruzioni di fedeltà assoluta
-                    text_layer = ""
+                    # 1. Costruzione blocco tipografico (Gerarchia 1)
+                    text_enforcement = ""
                     if use_t and t_val:
-                        # Comando rinforzato: 'exact character-for-character string'
-                        text_layer += f"The title MUST be the literal string \"{t_val}\", rendered character-for-character with 100% spelling accuracy in 3D font at the {t_pos}. "
+                        text_enforcement += f"MANDATORY TEXT OVERLAY: The book title \"{t_val.upper()}\" must be clearly printed in massive bold letters at the {t_pos}. "
                     if use_a and a_val:
-                        text_layer += f"The author name MUST be the literal string \"{a_val}\", rendered character-for-character with 100% spelling accuracy at the {a_pos}. "
+                        text_enforcement += f"MANDATORY TEXT OVERLAY: The author name \"{a_val.upper()}\" must be clearly printed at the {a_pos}. "
 
-                    # Prompt Finale con Hard Constraints
+                    # 2. Prompt Finale con tecnica "Double-Lock"
+                    # Mettiamo il testo sia all'inizio che come vincolo finale tassativo
                     prompt = (
-                        f"TYPOGRAPHY OVERLAY (HIGHEST PRIORITY): {text_layer} "
-                        f"BACKGROUND SCENE: A professional ebook cover representing {scene_en}. "
-                        f"ARTISTIC STYLE: {ATMOSFERE[genere]} mixed with {MODALITA_RENDERING[tipo_render]}. "
-                        f"CRITICAL TYPOGRAPHY RULES: 1. Render the text verbatim as written in the quotes. 2. Do not change any letters or symbols. "
-                        f"3. Spelling is mandatory: no character variations. 4. High contrast from background."
+                        f"TYPOGRAPHY IS THE HIGHEST PRIORITY. {text_enforcement} "
+                        f"COVER SCENE: A professional high-end cover representing {scene_en}. "
+                        f"STYLE: {ATMOSFERE[genere]} mixed with {MODALITA_RENDERING[tipo_render]}. "
+                        f"CRITICAL RULES: 1. Render the text exactly as written in quotes. 2. DO NOT OMIT the title or author. "
+                        f"3. Ensure high contrast: the background MUST be darkened or simplified behind the text areas to guarantee 100% legibility of \"{t_val}\" and \"{a_val}\"."
                     )
                     st.session_state['v83_prompt'] = prompt
-                    st.success("Prompt creato: Fedeltà Caratteri Attiva.")
+                    st.success("Prompt creato: Configurazione Tassativa Attiva.")
                 except Exception as e:
                     st.error(f"Errore: {e}")
 
@@ -216,7 +206,7 @@ with col_l:
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
             try:
-                with st.spinner("Generazione Master in corso..."):
+                with st.spinner("Generazione in corso..."):
                     out = client.run(
                         "black-forest-labs/flux-1.1-pro",
                         input={"prompt": p_edit, "aspect_ratio": "2:3", "output_format": "jpg", "output_quality": 100}
