@@ -39,7 +39,7 @@ def reset_all():
     st.rerun()
 
 # ==============================================================================
-# 3. KNOWLEDGE BASE PSICOLOGICA E NARRATIVA (INTEGRAZIONE AGGIORNATA)
+# 3. KNOWLEDGE BASE PSICOLOGICA E NARRATIVA (INVARIATO)
 # ==============================================================================
 COLOR_PSYCHOLOGY = """
 - ROSSO: Urgenza, Passione, Sopravvivenza.
@@ -51,7 +51,6 @@ COLOR_PSYCHOLOGY = """
 - BIANCO: Purezza, Chiarezza.
 """
 
-# AGGIUNTA: Guida alla profilazione narrativa
 NARRATIVE_GUIDE = """
 - IDENTIFICA: Il protagonista o l'oggetto iconico centrale.
 - AMBIENTAZIONE: Il luogo fisico descritto con più intensità.
@@ -60,7 +59,7 @@ NARRATIVE_GUIDE = """
 
 class PDFSemanticPsychologyAnalyzer:
     @staticmethod
-    def extract_text_from_pdf(pdf_file, max_pages=10): # Aumentate pagine per miglior analisi
+    def extract_text_from_pdf(pdf_file, max_pages=10):
         try:
             reader = PyPDF2.PdfReader(pdf_file)
             text_content = ""
@@ -77,7 +76,6 @@ class PDFSemanticPsychologyAnalyzer:
     def generate_psychological_concept(text, api_token):
         try:
             client = replicate.Client(api_token=api_token)
-            # PROMPT POTENZIATO PER PROFILAZIONE NARRATIVA ATTINENTE
             system_prompt = f"""
             Sei un esperto di analisi narrativa e Art Director editoriale. 
             Il tuo compito è analizzare questo estratto e creare un 'Visual Concept' per la copertina che sia profondamente attinente alla storia.
@@ -130,10 +128,10 @@ ATMOSFERE = {
 }
 
 # ==============================================================================
-# 5. SIDEBAR: COERENZA TESTUALE E PROFILAZIONE PDF
+# 5. SIDEBAR: COERENZA TESTUALE FEDELE (AGGIORNATO)
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v87.0")
+    st.title("📕 DESIGNER v87.1")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
@@ -153,7 +151,7 @@ with st.sidebar:
 
     st.divider()
 
-    # Modulo PDF POTENZIATO
+    # Modulo PDF
     st.markdown('<div class="pdf-uploader-box">', unsafe_allow_html=True)
     st.markdown("📄 **Analisi Narrativa & Psicologica**")
     uploaded_pdf = st.file_uploader("Carica il tuo PDF per una profilazione attinente:", type=["pdf"])
@@ -174,7 +172,7 @@ with st.sidebar:
 
     desc_it = st.text_area("3. Scena Visiva (IT):", value=st.session_state['auto_desc'])
     
-    # --- INTEGRAZIONE: LOCK TESTUALE E COERENZA ---
+    # --- INTEGRAZIONE: FEDELTÀ TESTUALE LETTERALE ---
     if st.button("🪄 GENERA ARCHITETTURA"):
         if desc_it:
             with st.spinner("Compilazione..."):
@@ -182,25 +180,24 @@ with st.sidebar:
                     t = GoogleTranslator(source='it', target='en')
                     scene_en = t.translate(desc_it)
                     
-                    # Costruzione blocco tipografico con delimitatori HARD-LOCK
+                    # Costruzione blocco tipografico con istruzioni di fedeltà assoluta
                     text_layer = ""
                     if use_t and t_val:
-                        # Usiamo delimitatori parentetici per la coerenza dei caratteri
-                        text_layer += f"The title [TEXT_TO_PRINT: \"{t_val}\"] must be printed in massive, bold, clear 3D font at the {t_pos} of the cover. "
+                        # Comando rinforzato: 'exact character-for-character string'
+                        text_layer += f"The title MUST be the literal string \"{t_val}\", rendered character-for-character with 100% spelling accuracy in 3D font at the {t_pos}. "
                     if use_a and a_val:
-                        text_layer += f"The author name [TEXT_TO_PRINT: \"{a_val}\"] must be clearly printed in a readable font at the {a_pos} of the cover. "
+                        text_layer += f"The author name MUST be the literal string \"{a_val}\", rendered character-for-character with 100% spelling accuracy at the {a_pos}. "
 
-                    # Prompt Finale con Hard Constraints per eliminare lettere inventate
+                    # Prompt Finale con Hard Constraints
                     prompt = (
-                        f"PRIMARY TEXTUAL OVERLAY (STRICT ADHERENCE): {text_layer} "
+                        f"TYPOGRAPHY OVERLAY (HIGHEST PRIORITY): {text_layer} "
                         f"BACKGROUND SCENE: A professional ebook cover representing {scene_en}. "
                         f"ARTISTIC STYLE: {ATMOSFERE[genere]} mixed with {MODALITA_RENDERING[tipo_render]}. "
-                        f"CRITICAL TYPOGRAPHY RULES: 1. You MUST render ONLY the exact characters provided within quotes. "
-                        f"2. Forbidden: No extra letters, no invented symbols, no spelling mistakes. "
-                        f"3. All text must have high relief and high contrast from the background scene."
+                        f"CRITICAL TYPOGRAPHY RULES: 1. Render the text verbatim as written in the quotes. 2. Do not change any letters or symbols. "
+                        f"3. Spelling is mandatory: no character variations. 4. High contrast from background."
                     )
                     st.session_state['v83_prompt'] = prompt
-                    st.success("Prompt creato: Sistema Anti-Hallucination Attivo.")
+                    st.success("Prompt creato: Fedeltà Caratteri Attiva.")
                 except Exception as e:
                     st.error(f"Errore: {e}")
 
