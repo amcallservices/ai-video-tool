@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN (INVARIATO)
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v86.2 - Precision Text", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v87.0 - Narrative Fidelity", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -39,29 +39,28 @@ def reset_all():
     st.rerun()
 
 # ==============================================================================
-# 3. KNOWLEDGE BASE PSICOLOGICA (INVARIATO)
+# 3. KNOWLEDGE BASE PSICOLOGICA E NARRATIVA (INTEGRAZIONE AGGIORNATA)
 # ==============================================================================
 COLOR_PSYCHOLOGY = """
-- ROSSO: Urgenza, Passione, Pericolo (Thriller)
-- BLU: Fiducia, Calma, Logica (Saggi)
-- VERDE: Crescita, Equilibrio, Guarigione (Psicologia)
-- VIOLA: Mistero, Spiritualità (Esoterico)
-- GIALLO: Ottimismo, Attenzione (Saggi)
-- NERO/GRIGIO: Autorità, Eleganza (Noir)
-- BIANCO: Purezza, Chiarezza (Minimalismo)
+- ROSSO: Urgenza, Passione, Sopravvivenza.
+- BLU: Fiducia, Calma, Logica.
+- VERDE: Crescita, Equilibrio, Guarigione.
+- VIOLA: Mistero, Spiritualità.
+- GIALLO: Ottimismo, Attenzione.
+- NERO/GRIGIO: Autorità, Eleganza, Ignoto.
+- BIANCO: Purezza, Chiarezza.
 """
 
-ARCHETYPES = """
-- IL SAGGIO: Verità, Scoperta.
-- IL GUERRIERO: Sfida, Vittoria.
-- L'AMANTE: Connessione, Sensualità.
-- IL MAGO: Trasformazione, Mistero.
-- L'ESPLORATORE: Libertà, Ricerca interiore.
+# AGGIUNTA: Guida alla profilazione narrativa
+NARRATIVE_GUIDE = """
+- IDENTIFICA: Il protagonista o l'oggetto iconico centrale.
+- AMBIENTAZIONE: Il luogo fisico descritto con più intensità.
+- METAFORA VISIVA: Un elemento che riassume il conflitto del libro.
 """
 
 class PDFSemanticPsychologyAnalyzer:
     @staticmethod
-    def extract_text_from_pdf(pdf_file, max_pages=8):
+    def extract_text_from_pdf(pdf_file, max_pages=10): # Aumentate pagine per miglior analisi
         try:
             reader = PyPDF2.PdfReader(pdf_file)
             text_content = ""
@@ -78,14 +77,25 @@ class PDFSemanticPsychologyAnalyzer:
     def generate_psychological_concept(text, api_token):
         try:
             client = replicate.Client(api_token=api_token)
+            # PROMPT POTENZIATO PER PROFILAZIONE NARRATIVA ATTINENTE
             system_prompt = f"""
-            Sei un esperto di psicologia umana e art direction. Analizza il libro e crea la scena visiva.
-            ESTRATTO LIBRO: {text[:5000]}
-            REGOLE: Scrivi SOLO la scena (massimo 3 frasi in italiano) menzionando colori e atmosfera.
+            Sei un esperto di analisi narrativa e Art Director editoriale. 
+            Il tuo compito è analizzare questo estratto e creare un 'Visual Concept' per la copertina che sia profondamente attinente alla storia.
+            
+            LINEE GUIDA:
+            1. Trova il SOGGETTO CENTRALE (personaggio o oggetto chiave) del racconto.
+            2. Definisci l'ATMOSFERA (cupa, solare, epica) basandoti sulle parole dell'autore.
+            3. Applica la PSICOLOGIA DEL COLORE e gli ARCHETIPI giusti.
+            
+            ESTRATTO LIBRO: {text[:6000]}
+            
+            REGOLE DI OUTPUT: 
+            Scrivi SOLO la scena visiva in 3 frasi in italiano. 
+            Includi dettagli su: Soggetto principale, Sfondo, e palette Colori.
             """
             output = client.run(
                 "meta/meta-llama-3-8b-instruct",
-                input={"prompt": system_prompt, "max_tokens": 200, "temperature": 0.5}
+                input={"prompt": system_prompt, "max_tokens": 250, "temperature": 0.6}
             )
             return "".join(output)
         except Exception as e:
@@ -120,10 +130,10 @@ ATMOSFERE = {
 }
 
 # ==============================================================================
-# 5. SIDEBAR: CORREZIONE CHIRURGICA TESTO
+# 5. SIDEBAR: COERENZA TESTUALE E PROFILAZIONE PDF
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v86.2")
+    st.title("📕 DESIGNER v87.0")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
@@ -143,28 +153,28 @@ with st.sidebar:
 
     st.divider()
 
-    # Modulo PDF
+    # Modulo PDF POTENZIATO
     st.markdown('<div class="pdf-uploader-box">', unsafe_allow_html=True)
-    st.markdown("📄 **Analisi Psicologica del Libro**")
-    uploaded_pdf = st.file_uploader("Carica PDF:", type=["pdf"])
+    st.markdown("📄 **Analisi Narrativa & Psicologica**")
+    uploaded_pdf = st.file_uploader("Carica il tuo PDF per una profilazione attinente:", type=["pdf"])
     
     if uploaded_pdf is not None:
-        if st.button("🧠 Avvia Profilazione IA"):
+        if st.button("🧠 Avvia Profilazione Narrativa"):
             if "REPLICATE_API_TOKEN" not in st.secrets:
                 st.error("Token mancante!")
             else:
-                with st.spinner("Analisi in corso..."):
+                with st.spinner("Analisi profonda del racconto in corso..."):
                     txt = PDFSemanticPsychologyAnalyzer.extract_text_from_pdf(uploaded_pdf)
                     if txt:
                         ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(txt, st.secrets["REPLICATE_API_TOKEN"])
                         if ai_scene:
                             st.session_state['auto_desc'] = ai_scene
-                            st.success("Scena psicologica generata.")
+                            st.success("Scena attinente al racconto generata!")
     st.markdown('</div>', unsafe_allow_html=True)
 
     desc_it = st.text_area("3. Scena Visiva (IT):", value=st.session_state['auto_desc'])
     
-    # --- CORREZIONE CHIRURGICA PROMPT ---
+    # --- INTEGRAZIONE: LOCK TESTUALE E COERENZA ---
     if st.button("🪄 GENERA ARCHITETTURA"):
         if desc_it:
             with st.spinner("Compilazione..."):
@@ -172,23 +182,25 @@ with st.sidebar:
                     t = GoogleTranslator(source='it', target='en')
                     scene_en = t.translate(desc_it)
                     
-                    # Costruzione blocco tipografico mandatorio
+                    # Costruzione blocco tipografico con delimitatori HARD-LOCK
                     text_layer = ""
                     if use_t and t_val:
-                        text_layer += f"The title \"{t_val}\" must be printed in massive, bold, clear 3D font at the {t_pos} of the cover. "
+                        # Usiamo delimitatori parentetici per la coerenza dei caratteri
+                        text_layer += f"The title [TEXT_TO_PRINT: \"{t_val}\"] must be printed in massive, bold, clear 3D font at the {t_pos} of the cover. "
                     if use_a and a_val:
-                        text_layer += f"The author name \"{a_val}\" must be clearly printed in a readable font at the {a_pos} of the cover. "
+                        text_layer += f"The author name [TEXT_TO_PRINT: \"{a_val}\"] must be clearly printed in a readable font at the {a_pos} of the cover. "
 
-                    # Prompt Finale con Gerarchia Prioritaria
-                    # Il testo è la PRIMA cosa che l'IA deve leggere
+                    # Prompt Finale con Hard Constraints per eliminare lettere inventate
                     prompt = (
-                        f"PRIMARY TEXTUAL OVERLAY: {text_layer} "
-                        f"BACKGROUND SCENE: A high-quality professional ebook cover representing {scene_en}. "
+                        f"PRIMARY TEXTUAL OVERLAY (STRICT ADHERENCE): {text_layer} "
+                        f"BACKGROUND SCENE: A professional ebook cover representing {scene_en}. "
                         f"ARTISTIC STYLE: {ATMOSFERE[genere]} mixed with {MODALITA_RENDERING[tipo_render]}. "
-                        f"CRITICAL RULES: 1. You MUST render the exact text provided in quotes. 2. High contrast between text and image background. 3. No spelling mistakes. 4. No extra characters."
+                        f"CRITICAL TYPOGRAPHY RULES: 1. You MUST render ONLY the exact characters provided within quotes. "
+                        f"2. Forbidden: No extra letters, no invented symbols, no spelling mistakes. "
+                        f"3. All text must have high relief and high contrast from the background scene."
                     )
                     st.session_state['v83_prompt'] = prompt
-                    st.success("Prompt creato: Testo forzato con priorità 1.")
+                    st.success("Prompt creato: Sistema Anti-Hallucination Attivo.")
                 except Exception as e:
                     st.error(f"Errore: {e}")
 
@@ -207,7 +219,7 @@ with col_l:
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
             try:
-                with st.spinner("Generazione in corso..."):
+                with st.spinner("Generazione Master in corso..."):
                     out = client.run(
                         "black-forest-labs/flux-1.1-pro",
                         input={"prompt": p_edit, "aspect_ratio": "2:3", "output_format": "jpg", "output_quality": 100}
