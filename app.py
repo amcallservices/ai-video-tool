@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v86.0", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v86.1 - 3D Text Edition", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -149,7 +149,7 @@ ATMOSFERE = {
 # 5. SIDEBAR: PERSONALIZZAZIONE TOTALE E ANALISI PDF
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v86.0")
+    st.title("📕 DESIGNER v86.1")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
@@ -201,23 +201,33 @@ with st.sidebar:
                     t = GoogleTranslator(source='it', target='en')
                     scene_en = t.translate(desc_it)
                     
-                    # INTEGRAZIONE ASSOLUTA DEL TESTO (TYPOGRAPHY ENFORCEMENT)
-                    # Forziamo il modello a NON ignorare MAI il testo
+                    # ------------------------------------------------------------------
+                    # INTEGRAZIONE: FORZATURA TESTUALE IN RILIEVO ASSOLUTO
+                    # ------------------------------------------------------------------
                     text_block = []
                     if use_t and t_val:
-                        text_block.append(f"ABSOLUTE MANDATE: You MUST render the exact title text \"{t_val}\" in massive, perfectly legible typography at the {t_pos} of the image.")
+                        text_block.append(
+                            f"CRITICAL MANDATE: The exact text \"{t_val}\" MUST be explicitly printed as the main title at the {t_pos}. "
+                            f"Use massive, 3D embossed, high-relief typography that physically pops out from the background with clear shadows."
+                        )
                     if use_a and a_val:
-                        text_block.append(f"ABSOLUTE MANDATE: You MUST render the exact author name \"{a_val}\" clearly at the {a_pos} of the image.")
+                        text_block.append(
+                            f"CRITICAL MANDATE: The exact text \"{a_val}\" MUST be explicitly printed as the author name at the {a_pos}. "
+                            f"Use clear, 3D embossed, high-relief typography."
+                        )
                     
-                    # Composizione Prompt finale con barriere anti-allucinazione
+                    # Composizione Prompt finale con barriere anti-allucinazione aggiornate
                     prompt = (
                         f"TYPOGRAPHY LAYER (HIGHEST PRIORITY): {' '.join(text_block)} "
                         f"BACKGROUND SCENE: A professional ebook cover representing: {scene_en}. "
                         f"ART DIRECTION: {ATMOSFERE[genere]} combined with {MODALITA_RENDERING[tipo_render]}. "
-                        f"STRICT INSTRUCTIONS: 1. You are forbidden from misspelling the title or author. 2. Do not invent letters. 3. Ensure maximum color contrast between the background and the text to maintain readability. 4. Do not write '{genere}' on the cover."
+                        f"STRICT INSTRUCTIONS: 1. You are forbidden from misspelling the title or author. Render the exact characters inside the quotes. "
+                        f"2. The typography MUST have a strong 3D embossed relief effect to stand out prominently. "
+                        f"3. Ensure maximum color contrast between the background and the text to maintain readability. "
+                        f"4. Do not write '{genere}' on the cover."
                     )
                     st.session_state['v83_prompt'] = prompt
-                    st.success("Prompt creato con successo!")
+                    st.success("Prompt creato con successo! Testi forzati in rilievo.")
                 except Exception as e:
                     st.error(f"Errore traduzione: {e}")
 
