@@ -2,6 +2,8 @@ import streamlit as st
 import replicate
 import requests
 import os
+import re
+from collections import Counter
 from deep_translator import GoogleTranslator
 
 # ==============================================================================
@@ -22,6 +24,13 @@ st.markdown("""
         background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
         color: white; font-size: 1.1rem; font-weight: 800; height: 3.5rem; border-radius: 10px; border: none;
     }
+    .linter-box {
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #30363d;
+        background-color: #161b22;
+        margin-top: 20px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -35,6 +44,43 @@ def reset_all():
     for key in st.session_state.keys():
         del st.session_state[key]
     st.rerun()
+
+# --- MIGLIORIA: FUNZIONE ANALISI QUALITÀ TESTO ---
+def analizza_qualita_prosa(testo):
+    """Analizza il testo per trovare ripetizioni e problemi di leggibilità"""
+    if not testo or len(testo) < 50:
+        return "⚠️ Testo troppo breve per un'analisi accurata."
+    
+    parole = re.findall(r'\b\w+\b', testo.lower())
+    frasi = re.split(r'[.!?]+', testo)
+    
+    errori = []
+    # Analisi Ripetizioni Ravvicinate (finestra di 12 parole)
+    finestra = 12
+    ripetizioni = []
+    for i in range(len(parole) - finestra):
+        target = parole[i]
+        if len(target) > 3:
+            if target in parole[i+1 : i+finestra]:
+                ripetizioni.append(target)
+    
+    if ripetizioni:
+        top = Counter(ripetizioni).most_common(3)
+        errori.append(f"🔄 **Ripetizioni ravvicinate**: '{', '.join([p[0] for p in top])}'")
+    
+    # Frasi lunghe
+    lunghe = [f for f in frasi if len(f.split()) > 30]
+    if lunghe:
+        errori.append(f"📏 **{len(lunghe)} frasi troppo lunghe** (oltre 30 parole).")
+    
+    # Avverbi eccessivi (stile pesante)
+    avverbi = [p for p in parole if p.endswith('mente') and len(p) > 7]
+    if len(avverbi) > (len(parole) * 0.02):
+        errori.append(f"✍️ **Stile pesante**: troppi avverbi in '-mente' ({len(avverbi)}).")
+
+    if not errori:
+        return "✅ **Qualità eccellente!** Lo stile è fluido e privo di ripetizioni evidenti."
+    return "\n\n".join(errori)
 
 # ==============================================================================
 # 3. MATRICE DEGLI STILI (DINAMICA CON NUOVE CATEGORIE)
@@ -99,14 +145,12 @@ with st.sidebar:
                     t = GoogleTranslator(source='it', target='en')
                     scene_en = t.translate(desc_it)
                     
-                    # CORREZIONE TIPOGRAFICA: Forzatura carattere per carattere
                     text_block = []
                     if use_t and t_val:
                         text_block.append(f"The cover must display the exact text \"{t_val}\" clearly as the main title at the {t_pos}.")
                     if use_a and a_val:
                         text_block.append(f"The cover must display the exact author name \"{a_val}\" clearly at the {a_pos}.")
                     
-                    # Composizione Prompt finale con istruzioni di controllo ortografico (Spell-check enforcement)
                     prompt = (
                         f"TYPOGRAPHY OVERLAY: {' '.join(text_block)} "
                         f"BACKGROUND: A professional ebook cover with {scene_en}. "
@@ -150,6 +194,14 @@ with col_l:
                         st.balloons()
                 except Exception as e:
                     st.error(f"Errore generazione: {e}")
+
+    # --- MIGLIORIA: AREA ANALISI TESTO MANOSCRITTO ---
+    st.divider()
+    st.subheader("🔍 Controllo Qualità Manoscritto")
+    testo_per_linter = st.text_area("Incolla qui un capitolo per analizzarne la qualità editoriale:", height=300)
+    if st.button("Analizza Stile e Bozza"):
+        risultato = analizza_qualita_prosa(testo_per_linter)
+        st.markdown(f'<div class="linter-box">{risultato}</div>', unsafe_allow_html=True)
 
 with col_r:
     st.subheader("🖼️ Anteprima")
