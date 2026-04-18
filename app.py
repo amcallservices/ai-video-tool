@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v85 - PDF AI Engine", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v86.0", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -23,7 +23,7 @@ st.markdown("""
         background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
         color: white; font-size: 1.1rem; font-weight: 800; height: 3.5rem; border-radius: 10px; border: none;
     }
-    .pdf-uploader-box { border: 2px dashed #007bff; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+    .pdf-uploader-box { border: 2px dashed #007bff; padding: 15px; border-radius: 8px; margin-bottom: 15px; background-color: #10141b; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -40,21 +40,40 @@ def reset_all():
     st.rerun()
 
 # ==============================================================================
-# 3. MOTORE DI ESTRAZIONE SEMANTICA PDF (NUOVO MODULO)
+# 3. KNOWLEDGE BASE PSICOLOGICA (INTEGRAZIONE ENTERPRISE)
 # ==============================================================================
-class PDFSemanticAnalyzer:
+# Questo modulo espande drasticamente l'intelligenza dell'app fornendo 
+# regole di neuromarketing e psicologia visiva.
+COLOR_PSYCHOLOGY = """
+- ROSSO: Urgenza, Passione, Pericolo, Sopravvivenza (Ideale per Thriller, Business aggressivo)
+- BLU: Fiducia, Calma, Sicurezza, Logica (Ideale per Saggi Scientifici, Manuali Tecnici)
+- VERDE: Crescita, Natura, Denaro, Equilibrio, Guarigione (Ideale per Psicologia, Finanza, Meditazione)
+- VIOLA: Mistero, Spiritualità, Lusso, Magia (Ideale per Fantasy, Esoterico, Religioso)
+- GIALLO: Ottimismo, Attenzione, Follia, Energia (Ideale per Quiz, Saggi provocatori)
+- NERO/GRIGIO: Autorità, Eleganza, Paura, Sconosciuto (Ideale per Noir, Thriller psicologici)
+- BIANCO: Purezza, Chiarezza, Vuoto, Verità (Ideale per Saggi minimalisti, Biografie)
+"""
+
+ARCHETYPES = """
+- IL SAGGIO: Simboli (Libri, Gufi, Scale, Luce che filtra). Temi (Verità, Scoperta).
+- IL GUERRIERO: Simboli (Armi, Montagne ripide, Tempeste). Temi (Sfida, Vittoria).
+- L'AMANTE: Simboli (Fiori, Intrecci, Forme morbide). Temi (Connessione, Sensualità).
+- IL MAGO: Simboli (Nebbia, Astri, Geometrie complesse). Temi (Trasformazione, Mistero).
+- L'ESPLORATORE: Simboli (Orizzonti, Sentieri, Bussole). Temi (Libertà, Ricerca interiore).
+"""
+
+class PDFSemanticPsychologyAnalyzer:
     """
-    Classe dedicata all'estrapolazione del senso logico di un libro tramite PDF
-    e generazione di una scena visiva utilizzando un LLM testuale su Replicate.
+    Motore avanzato per l'estrazione semantica. Analizza il testo non solo per 
+    il contenuto, ma per la risonanza emotiva, applicando teorie psicologiche.
     """
     
     @staticmethod
-    def extract_text_from_pdf(pdf_file, max_pages=5):
-        """Estrae il testo dalle prime pagine del PDF per capire il contesto."""
+    def extract_text_from_pdf(pdf_file, max_pages=8):
+        """Estrae un volume maggiore di testo per un'analisi psicologica più profonda."""
         try:
             reader = PyPDF2.PdfReader(pdf_file)
             text_content = ""
-            # Leggiamo solo le prime 'max_pages' per non sovraccaricare il token limit dell'LLM
             limit = min(max_pages, len(reader.pages))
             for i in range(limit):
                 page = reader.pages[i]
@@ -65,34 +84,42 @@ class PDFSemanticAnalyzer:
             return None
 
     @staticmethod
-    def generate_visual_concept(text, api_token):
-        """Invia il testo estratto a Llama-3 per estrapolare la scena della copertina."""
+    def generate_psychological_concept(text, api_token):
+        """Invia il testo a Llama-3 con istruzioni di neuromarketing e psicologia."""
         try:
             client = replicate.Client(api_token=api_token)
-            # Prompt per Llama 3: chiediamo di fare il critico letterario e art director
-            system_prompt = (
-                "Sei un art director editoriale. Leggi l'estratto di questo libro "
-                "e scrivi SOLO una breve scena visiva (massimo 2 frasi, in italiano) "
-                "perfetta per la copertina di questo libro. Non aggiungere saluti o commenti. "
-                f"Estratto libro: {text[:4000]}" # Limitiamo a 4000 caratteri per sicurezza
-            )
             
-            # Utilizziamo Llama 3 su Replicate per analizzare il testo
+            system_prompt = f"""
+            Sei un esperto di psicologia umana, neuromarketing e art direction editoriale.
+            Il tuo compito è analizzare l'estratto di questo libro e progettare la scena visiva della copertina.
+            
+            REGOLE DI ANALISI PSICOLOGICA:
+            1. Analizza il senso profondo e il "dolore" o "desiderio" del lettore target.
+            2. Seleziona i COLORI dominanti usando la psicologia del colore.
+            3. Seleziona un SOGGETTO VISIVO basato sugli archetipi junghiani che risuoni con l'inconscio.
+            
+            RISORSE:
+            {COLOR_PSYCHOLOGY}
+            {ARCHETYPES}
+            
+            ESTRATTO LIBRO: {text[:5000]}
+            
+            OUTPUT RICHIESTO:
+            Scrivi SOLO ed esclusivamente la descrizione della scena (massimo 3 frasi in italiano).
+            La descrizione DEVE menzionare i colori scelti, l'atmosfera emotiva e il soggetto visivo. Nessun commento o preambolo.
+            """
+            
             output = client.run(
                 "meta/meta-llama-3-8b-instruct",
-                input={
-                    "prompt": system_prompt,
-                    "max_tokens": 150,
-                    "temperature": 0.7
-                }
+                input={"prompt": system_prompt, "max_tokens": 200, "temperature": 0.5}
             )
             return "".join(output)
         except Exception as e:
-            st.error(f"Errore nel Motore LLM: {e}")
+            st.error(f"Errore nel Motore LLM Psicologico: {e}")
             return None
 
 # ==============================================================================
-# 4. MATRICE DEGLI STILI 
+# 4. MATRICE DEGLI STILI (DINAMICA CON NUOVE CATEGORIE)
 # ==============================================================================
 MODALITA_RENDERING = {
     "Fotorealistico": "photorealistic, 8k, highly detailed, realistic textures",
@@ -122,7 +149,7 @@ ATMOSFERE = {
 # 5. SIDEBAR: PERSONALIZZAZIONE TOTALE E ANALISI PDF
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v85")
+    st.title("📕 DESIGNER v86.0")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
@@ -145,29 +172,26 @@ with st.sidebar:
     a_pos = st.selectbox("Posizione Autore:", ["top", "center", "bottom"], index=2) if use_a else ""
 
     st.divider()
-    
-    # NUOVO MODULO: UPLOAD PDF E ANALISI
+
+    # NUOVO MODULO PDF: ANALISI PSICOLOGICA
     st.markdown('<div class="pdf-uploader-box">', unsafe_allow_html=True)
-    st.markdown("📄 **Analisi Semantica del Libro**")
-    uploaded_pdf = st.file_uploader("Carica il PDF per autocompilare la scena:", type=["pdf"])
+    st.markdown("📄 **Analisi Psicologica del Libro**")
+    uploaded_pdf = st.file_uploader("Carica PDF per estrarre Archetipi e Colori:", type=["pdf"])
     
     if uploaded_pdf is not None:
-        if st.button("🧠 Analizza PDF", help="Usa l'IA per estrapolare il senso del libro"):
+        if st.button("🧠 Avvia Profilazione IA", help="Analizza il testo con modelli di neuromarketing"):
             if "REPLICATE_API_TOKEN" not in st.secrets:
                 st.error("Inserisci il REPLICATE_API_TOKEN nei secrets per usare l'analisi IA.")
             else:
-                with st.spinner("Lettura del manoscritto e analisi semantica in corso..."):
-                    # Estrazione Testo
-                    extracted_text = PDFSemanticAnalyzer.extract_text_from_pdf(uploaded_pdf)
+                with st.spinner("Estrazione semantica e mappatura emotiva in corso..."):
+                    extracted_text = PDFSemanticPsychologyAnalyzer.extract_text_from_pdf(uploaded_pdf)
                     if extracted_text:
-                        # Generazione Scena
-                        ai_scene = PDFSemanticAnalyzer.generate_visual_concept(extracted_text, st.secrets["REPLICATE_API_TOKEN"])
+                        ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(extracted_text, st.secrets["REPLICATE_API_TOKEN"])
                         if ai_scene:
                             st.session_state['auto_desc'] = ai_scene
-                            st.success("Analisi completata! Scena generata.")
+                            st.success("Analisi Completata! Scena psicologica generata.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # L'utente può usare la scena del PDF o scriverla a mano
     desc_it = st.text_area("3. Scena Visiva (IT):", value=st.session_state['auto_desc'], placeholder="Es: Un monaco in cima a una montagna...")
     
     if st.button("🪄 GENERA ARCHITETTURA"):
@@ -177,19 +201,20 @@ with st.sidebar:
                     t = GoogleTranslator(source='it', target='en')
                     scene_en = t.translate(desc_it)
                     
-                    # CORREZIONE TIPOGRAFICA
+                    # INTEGRAZIONE ASSOLUTA DEL TESTO (TYPOGRAPHY ENFORCEMENT)
+                    # Forziamo il modello a NON ignorare MAI il testo
                     text_block = []
                     if use_t and t_val:
-                        text_block.append(f"The cover must display the exact text \"{t_val}\" clearly as the main title at the {t_pos}.")
+                        text_block.append(f"ABSOLUTE MANDATE: You MUST render the exact title text \"{t_val}\" in massive, perfectly legible typography at the {t_pos} of the image.")
                     if use_a and a_val:
-                        text_block.append(f"The cover must display the exact author name \"{a_val}\" clearly at the {a_pos}.")
+                        text_block.append(f"ABSOLUTE MANDATE: You MUST render the exact author name \"{a_val}\" clearly at the {a_pos} of the image.")
                     
-                    # Composizione Prompt finale
+                    # Composizione Prompt finale con barriere anti-allucinazione
                     prompt = (
-                        f"TYPOGRAPHY OVERLAY: {' '.join(text_block)} "
-                        f"BACKGROUND: A professional ebook cover with {scene_en}. "
-                        f"ART STYLE: {ATMOSFERE[genere]} combined with {MODALITA_RENDERING[tipo_render]}. "
-                        f"MANDATORY RULES: 1. Render the text exactly as written in quotes. 2. No extra characters or invented letters. 3. High contrast between text and background. 4. Do not write the word '{genere}' on the image."
+                        f"TYPOGRAPHY LAYER (HIGHEST PRIORITY): {' '.join(text_block)} "
+                        f"BACKGROUND SCENE: A professional ebook cover representing: {scene_en}. "
+                        f"ART DIRECTION: {ATMOSFERE[genere]} combined with {MODALITA_RENDERING[tipo_render]}. "
+                        f"STRICT INSTRUCTIONS: 1. You are forbidden from misspelling the title or author. 2. Do not invent letters. 3. Ensure maximum color contrast between the background and the text to maintain readability. 4. Do not write '{genere}' on the cover."
                     )
                     st.session_state['v83_prompt'] = prompt
                     st.success("Prompt creato con successo!")
