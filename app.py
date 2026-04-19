@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN (INVARIATO)
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v89.1 - Genre Authority", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v90.0 - Neuromarketing Edition", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -39,8 +39,15 @@ def reset_all():
     st.rerun()
 
 # ==============================================================================
-# 3. KNOWLEDGE BASE NARRATIVA ADATTIVA
+# 3. KNOWLEDGE BASE: NEUROMARKETING E TRE CERVELLI (NUOVA INTEGRAZIONE)
 # ==============================================================================
+TRIUNE_BRAIN_THEORY = """
+REGOLE DI CONVERSIONE E NEUROMARKETING (I 3 CERVELLI):
+1. CERVELLO RETTILIANO (Istinto/Sopravvivenza): Cattura l'attenzione visiva immediata usando forti contrasti, elementi tangibili, minaccia/soluzione, o stimoli visivi primari (cibo, pericolo, sesso, fuga, vittoria).
+2. CERVELLO LIMBICO (Emozione): Inserisci elementi che creano empatia o curiosità viscerale (es. sguardi intensi, atmosfere sognanti, colori caldi o drammatici, volti umani).
+3. NEOCORTECCIA (Logica): Fornisci una struttura pulita, layout professionale e spazi vuoti per far capire istantaneamente che il libro è autorevole e risolve il problema.
+"""
+
 class PDFSemanticPsychologyAnalyzer:
     @staticmethod
     def extract_text_from_pdf(pdf_file, max_pages=10):
@@ -60,23 +67,25 @@ class PDFSemanticPsychologyAnalyzer:
     def generate_psychological_concept(text, api_token, genere_scelto):
         try:
             client = replicate.Client(api_token=api_token)
+            # PROMPT POTENZIATO CON IL NEUROMARKETING PER IL ONE-SHOT SUCCESS
             system_prompt = f"""
-            Sei un Art Director editoriale senior esperto in {genere_scelto}. 
-            Analizza l'estratto del libro e progetta una scena visiva per la copertina che sia TASSATIVAMENTE coerente con il genere '{genere_scelto}'.
+            Sei un Art Director editoriale senior esperto in {genere_scelto} e in Neuromarketing comportamentale.
+            Il tuo scopo è progettare una scena visiva per una copertina che massimizzi le vendite (CTR) colpendo il subconscio del cliente al primo sguardo.
             
-            REGOLE PER GENERE:
-            - Se è Scientifico/Tecnico: focus su ordine, precisione, icone pulite.
-            - Se è Narrativo (Classico/Moderno): focus su atmosfera, tensione, personaggi o metafore letterarie.
-            - Se è Ricettario: focus su cibo, freschezza, texture appetitose.
-            - Se è Esoterico/Meditativo: focus su simbolismo, luce soffusa, colori spirituali.
+            {TRIUNE_BRAIN_THEORY}
             
-            ESTRATTO: {text[:6000]}
+            ESTRATTO DEL LIBRO: {text[:6000]}
             
-            OUTPUT: Scrivi SOLO la scena visiva in 3 frasi in italiano.
+            ISTRUZIONI TASSATIVE:
+            Progetta una singola immagine potente che unisca questi tre cervelli, TASSATIVAMENTE coerente con il genere '{genere_scelto}'.
+            Scrivi SOLO ed esclusivamente la scena visiva in 3-4 frasi in italiano descrivendo: 
+            - L'elemento visivo rettiliano (il contrasto/impatto).
+            - L'atmosfera limbica (l'emozione/colori).
+            - La composizione (logica/spazio per il testo).
             """
             output = client.run(
                 "meta/meta-llama-3-8b-instruct",
-                input={"prompt": system_prompt, "max_tokens": 250, "temperature": 0.6}
+                input={"prompt": system_prompt, "max_tokens": 300, "temperature": 0.5} # Temperature abbassata per maggiore precisione
             )
             return "".join(output)
         except Exception as e:
@@ -84,7 +93,7 @@ class PDFSemanticPsychologyAnalyzer:
             return None
 
 # ==============================================================================
-# 4. MATRICE DEGLI STILI (DINAMICA AGGIORNATA v89.1)
+# 4. MATRICE DEGLI STILI (INVARIATO)
 # ==============================================================================
 MODALITA_RENDERING = {
     "Fotorealistico": "photorealistic, 8k, highly detailed",
@@ -94,7 +103,6 @@ MODALITA_RENDERING = {
     "Vintage": "retro oil painting style, aged paper"
 }
 
-# ATMOSFERE CON INTEGRAZIONE ROMANZO CLASSICO E NARRATIVO
 ATMOSFERE = {
     "Saggio Scientifico": "authoritative academic layout, clean white space, mathematical or data precision",
     "Quiz Scientifico": "engaging educational layout, dynamic colorful diagrams, vibrant and fun",
@@ -116,10 +124,10 @@ ATMOSFERE = {
 }
 
 # ==============================================================================
-# 5. SIDEBAR: PERSONALIZZAZIONE E ANALISI (INVARIATO)
+# 5. SIDEBAR: ZERO-WASTE TYPOGRAPHY ENFORCEMENT
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v89.1")
+    st.title("📕 DESIGNER v90.0")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
@@ -138,27 +146,28 @@ with st.sidebar:
 
     st.divider()
 
-    # Modulo PDF
+    # Modulo PDF Neuromarketing
     st.markdown('<div class="pdf-uploader-box">', unsafe_allow_html=True)
-    st.markdown(f"📄 **Analisi per {genere}**")
+    st.markdown(f"📄 **Profilazione Neuromarketing ({genere})**")
     uploaded_pdf = st.file_uploader("Carica il PDF del libro:", type=["pdf"])
     
     if uploaded_pdf is not None:
-        if st.button("🧠 Avvia Profilazione Narrativa"):
+        if st.button("🧠 Estrai Scena di Conversione"):
             if "REPLICATE_API_TOKEN" not in st.secrets:
                 st.error("Token mancante!")
             else:
-                with st.spinner(f"Analisi specifica per genere {genere}..."):
+                with st.spinner(f"Analisi dei Tre Cervelli in corso..."):
                     txt = PDFSemanticPsychologyAnalyzer.extract_text_from_pdf(uploaded_pdf)
                     if txt:
                         ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(txt, st.secrets["REPLICATE_API_TOKEN"], genere)
                         if ai_scene:
                             st.session_state['auto_desc'] = ai_scene
-                            st.success(f"Scena per '{genere}' generata!")
+                            st.success(f"Scena ottimizzata per le vendite generata!")
     st.markdown('</div>', unsafe_allow_html=True)
 
     desc_it = st.text_area("3. Scena Visiva (IT):", value=st.session_state['auto_desc'])
     
+    # --- INTEGRAZIONE: GABBIA DI FERRO PER LA TIPOGRAFIA ---
     if st.button("🪄 GENERA ARCHITETTURA"):
         if desc_it:
             with st.spinner("Compilazione prompt..."):
@@ -168,19 +177,22 @@ with st.sidebar:
                     
                     text_enforcement = ""
                     if use_t and t_val:
-                        text_enforcement += f"MANDATORY: The book title \"{t_val.upper()}\" must be printed in massive bold letters at the {t_pos}. "
+                        text_enforcement += f"MANDATORY TITLE: The exact text \"{t_val.upper()}\" MUST be flawlessly printed in massive, highly legible font at the {t_pos}. "
                     if use_a and a_val:
-                        text_enforcement += f"MANDATORY: The author name \"{a_val.upper()}\" must be clearly printed at the {a_pos}. "
+                        text_enforcement += f"MANDATORY AUTHOR: The exact text \"{a_val.upper()}\" MUST be flawlessly printed at the {a_pos}. "
 
+                    # Costruzione del prompt con inibitori di allucinazione estremi
                     prompt = (
-                        f"TYPOGRAPHY HIGHEST PRIORITY. {text_enforcement} "
-                        f"COVER SCENE: A professional ebook cover for a {genere} book, representing: {scene_en}. "
-                        f"VISUAL STYLE: {ATMOSFERE[genere]} with {MODALITA_RENDERING[tipo_render]} rendering. "
-                        f"CRITICAL RULES: 1. Render exactly the characters in quotes. 2. DO NOT OMIT the title or author. "
-                        f"3. High contrast: background must be simplified behind the text to ensure 100% legibility."
+                        f"TYPOGRAPHY IS THE ABSOLUTE PRIORITY. {text_enforcement} "
+                        f"VISUAL HOOK: A highly engaging, neuromarketing-optimized ebook cover representing: {scene_en}. "
+                        f"STYLE DIRECTION: {ATMOSFERE[genere]} rendered in {MODALITA_RENDERING[tipo_render]}. "
+                        f"CRITICAL ANTI-HALLUCINATION RULES: "
+                        f"1. You MUST print the EXACT characters inside the quotes. "
+                        f"2. ZERO EXTRA TEXT: Do not generate any random words, subtitles, watermarks, or gibberish. ONLY the requested strings. "
+                        f"3. MAXIMUM LEGIBILITY: The background immediately behind the text MUST be darkened, blurred, or simplified to guarantee the text is 100% readable on the first try."
                     )
                     st.session_state['v83_prompt'] = prompt
-                    st.success(f"Architettura per {genere} pronta.")
+                    st.success(f"Architettura Zero-Sprechi pronta.")
                 except Exception as e:
                     st.error(f"Errore: {e}")
 
@@ -199,7 +211,7 @@ with col_l:
         else:
             client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
             try:
-                with st.spinner("Generazione in corso..."):
+                with st.spinner("Generazione Master in corso..."):
                     out = client.run(
                         "black-forest-labs/flux-1.1-pro",
                         input={"prompt": p_edit, "aspect_ratio": "2:3", "output_format": "jpg", "output_quality": 100}
