@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN (INVARIATO)
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v90.0 - Neuromarketing Edition", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v90.1 - Targeted Neuromarketing", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -39,7 +39,7 @@ def reset_all():
     st.rerun()
 
 # ==============================================================================
-# 3. KNOWLEDGE BASE: NEUROMARKETING E TRE CERVELLI (NUOVA INTEGRAZIONE)
+# 3. KNOWLEDGE BASE: NEUROMARKETING E TRE CERVELLI (AGGIORNATO CON FOCUS)
 # ==============================================================================
 TRIUNE_BRAIN_THEORY = """
 REGOLE DI CONVERSIONE E NEUROMARKETING (I 3 CERVELLI):
@@ -64,15 +64,20 @@ class PDFSemanticPsychologyAnalyzer:
             return None
 
     @staticmethod
-    def generate_psychological_concept(text, api_token, genere_scelto):
+    def generate_psychological_concept(text, api_token, genere_scelto, argomento_focus=""):
         try:
             client = replicate.Client(api_token=api_token)
-            # PROMPT POTENZIATO CON IL NEUROMARKETING PER IL ONE-SHOT SUCCESS
+            
+            # --- INTEGRAZIONE: LOGICA DEL FOCUS ARGOMENTO ---
+            focus_istruzione = f"ARGOMENTO FOCUS RICHIESTO DALL'UTENTE: '{argomento_focus}'. L'intera metafora visiva DEVE ruotare attorno a questo tema specifico, integrandolo in modo fluido con il testo estratto dal PDF." if argomento_focus else "Estrai il tema principale unicamente dal testo del PDF."
+
             system_prompt = f"""
             Sei un Art Director editoriale senior esperto in {genere_scelto} e in Neuromarketing comportamentale.
             Il tuo scopo è progettare una scena visiva per una copertina che massimizzi le vendite (CTR) colpendo il subconscio del cliente al primo sguardo.
             
             {TRIUNE_BRAIN_THEORY}
+            
+            {focus_istruzione}
             
             ESTRATTO DEL LIBRO: {text[:6000]}
             
@@ -85,7 +90,7 @@ class PDFSemanticPsychologyAnalyzer:
             """
             output = client.run(
                 "meta/meta-llama-3-8b-instruct",
-                input={"prompt": system_prompt, "max_tokens": 300, "temperature": 0.5} # Temperature abbassata per maggiore precisione
+                input={"prompt": system_prompt, "max_tokens": 300, "temperature": 0.5} 
             )
             return "".join(output)
         except Exception as e:
@@ -124,10 +129,10 @@ ATMOSFERE = {
 }
 
 # ==============================================================================
-# 5. SIDEBAR: ZERO-WASTE TYPOGRAPHY ENFORCEMENT
+# 5. SIDEBAR: ZERO-WASTE TYPOGRAPHY ENFORCEMENT & TOPIC FOCUS
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v90.0")
+    st.title("📕 DESIGNER v90.1")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
@@ -146,9 +151,12 @@ with st.sidebar:
 
     st.divider()
 
-    # Modulo PDF Neuromarketing
+    # Modulo PDF Neuromarketing con Suggerimento Argomento
     st.markdown('<div class="pdf-uploader-box">', unsafe_allow_html=True)
     st.markdown(f"📄 **Profilazione Neuromarketing ({genere})**")
+    
+    # --- INTEGRAZIONE: CAMPO DI TESTO PER L'ARGOMENTO FOCUS ---
+    argomento_focus = st.text_input("🎯 Suggerisci Argomento (Opzionale):", placeholder="Es. Rivincita personale, Lotta di classe...")
     uploaded_pdf = st.file_uploader("Carica il PDF del libro:", type=["pdf"])
     
     if uploaded_pdf is not None:
@@ -159,7 +167,8 @@ with st.sidebar:
                 with st.spinner(f"Analisi dei Tre Cervelli in corso..."):
                     txt = PDFSemanticPsychologyAnalyzer.extract_text_from_pdf(uploaded_pdf)
                     if txt:
-                        ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(txt, st.secrets["REPLICATE_API_TOKEN"], genere)
+                        # Passiamo anche l'argomento_focus alla funzione
+                        ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(txt, st.secrets["REPLICATE_API_TOKEN"], genere, argomento_focus)
                         if ai_scene:
                             st.session_state['auto_desc'] = ai_scene
                             st.success(f"Scena ottimizzata per le vendite generata!")
@@ -167,7 +176,7 @@ with st.sidebar:
 
     desc_it = st.text_area("3. Scena Visiva (IT):", value=st.session_state['auto_desc'])
     
-    # --- INTEGRAZIONE: GABBIA DI FERRO PER LA TIPOGRAFIA ---
+    # --- GABBIA DI FERRO PER LA TIPOGRAFIA (INVARIATO) ---
     if st.button("🪄 GENERA ARCHITETTURA"):
         if desc_it:
             with st.spinner("Compilazione prompt..."):
@@ -181,7 +190,6 @@ with st.sidebar:
                     if use_a and a_val:
                         text_enforcement += f"MANDATORY AUTHOR: The exact text \"{a_val.upper()}\" MUST be flawlessly printed at the {a_pos}. "
 
-                    # Costruzione del prompt con inibitori di allucinazione estremi
                     prompt = (
                         f"TYPOGRAPHY IS THE ABSOLUTE PRIORITY. {text_enforcement} "
                         f"VISUAL HOOK: A highly engaging, neuromarketing-optimized ebook cover representing: {scene_en}. "
