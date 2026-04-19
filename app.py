@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN (INVARIATO)
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v90.1 - Targeted Neuromarketing", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v90.2 - Targeted Neuromarketing", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -98,7 +98,7 @@ class PDFSemanticPsychologyAnalyzer:
             return None
 
 # ==============================================================================
-# 4. MATRICE DEGLI STILI (INVARIATO)
+# 4. MATRICE DEGLI STILI (DINAMICA AGGIORNATA CON CONTEMPORANEO)
 # ==============================================================================
 MODALITA_RENDERING = {
     "Fotorealistico": "photorealistic, 8k, highly detailed",
@@ -125,14 +125,15 @@ ATMOSFERE = {
     "Ricettario": "gourmet food photography style, bright appetizing colors, fresh ingredients in focus",
     "Test Prep (Preparazione Esami)": "organized textbook style, academic focus icons, professional structured layout",
     "Romanzo Classico": "timeless literary aesthetic, elegant serif typography, historical or metaphorical atmosphere, oil painting or etched textures",
-    "Narrativo": "balanced fiction layout, emotional narrative depth, contemporary commercial appeal, character-focused scenery"
+    "Narrativo": "balanced fiction layout, emotional narrative depth, contemporary commercial appeal, character-focused scenery",
+    "Contemporaneo": "modern contemporary aesthetic, trendy and sleek layout, relatable everyday elements, vivid and crisp color grading, minimalist yet striking composition" # <-- INSERIMENTO AGGIUNTO
 }
 
 # ==============================================================================
 # 5. SIDEBAR: ZERO-WASTE TYPOGRAPHY ENFORCEMENT & TOPIC FOCUS
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v90.1")
+    st.title("📕 DESIGNER v90.2")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
