@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN (INVARIATO)
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v89.0 - Genre Authority", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v89.1 - Genre Authority", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -60,14 +60,13 @@ class PDFSemanticPsychologyAnalyzer:
     def generate_psychological_concept(text, api_token, genere_scelto):
         try:
             client = replicate.Client(api_token=api_token)
-            # L'LLM ora riceve il genere come contesto per adattare la scena
             system_prompt = f"""
             Sei un Art Director editoriale senior esperto in {genere_scelto}. 
             Analizza l'estratto del libro e progetta una scena visiva per la copertina che sia TASSATIVAMENTE coerente con il genere '{genere_scelto}'.
             
             REGOLE PER GENERE:
             - Se è Scientifico/Tecnico: focus su ordine, precisione, icone pulite.
-            - Se è Narrativo (Fantasy/Thriller): focus su atmosfera, tensione, personaggi.
+            - Se è Narrativo (Classico/Moderno): focus su atmosfera, tensione, personaggi o metafore letterarie.
             - Se è Ricettario: focus su cibo, freschezza, texture appetitose.
             - Se è Esoterico/Meditativo: focus su simbolismo, luce soffusa, colori spirituali.
             
@@ -85,7 +84,7 @@ class PDFSemanticPsychologyAnalyzer:
             return None
 
 # ==============================================================================
-# 4. MATRICE DEGLI STILI (DINAMICA AGGIORNATA)
+# 4. MATRICE DEGLI STILI (DINAMICA AGGIORNATA v89.1)
 # ==============================================================================
 MODALITA_RENDERING = {
     "Fotorealistico": "photorealistic, 8k, highly detailed",
@@ -95,7 +94,7 @@ MODALITA_RENDERING = {
     "Vintage": "retro oil painting style, aged paper"
 }
 
-# NUOVE ATMOSFERE RICHIESTE CON DESCRITTORI TECNICI ADATTATI
+# ATMOSFERE CON INTEGRAZIONE ROMANZO CLASSICO E NARRATIVO
 ATMOSFERE = {
     "Saggio Scientifico": "authoritative academic layout, clean white space, mathematical or data precision",
     "Quiz Scientifico": "engaging educational layout, dynamic colorful diagrams, vibrant and fun",
@@ -111,18 +110,19 @@ ATMOSFERE = {
     "Manuale Psicologico": "balanced zen minimalist layout, calming watercolor textures, psychological harmony",
     "Biografia": "classic biography portrait, elegant typography, timeless historical textures",
     "Ricettario": "gourmet food photography style, bright appetizing colors, fresh ingredients in focus",
-    "Test Prep (Preparazione Esami)": "organized textbook style, academic focus icons, professional structured layout"
+    "Test Prep (Preparazione Esami)": "organized textbook style, academic focus icons, professional structured layout",
+    "Romanzo Classico": "timeless literary aesthetic, elegant serif typography, historical or metaphorical atmosphere, oil painting or etched textures",
+    "Narrativo": "balanced fiction layout, emotional narrative depth, contemporary commercial appeal, character-focused scenery"
 }
 
 # ==============================================================================
-# 5. SIDEBAR: PERSONALIZZAZIONE E ANALISI
+# 5. SIDEBAR: PERSONALIZZAZIONE E ANALISI (INVARIATO)
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v89.0")
+    st.title("📕 DESIGNER v89.1")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
-    # Caricamento dinamico delle nuove atmosfere
     genere = st.selectbox("1. Atmosfera Editoriale:", list(ATMOSFERE.keys()))
     tipo_render = st.selectbox("2. Stile di Rendering:", list(MODALITA_RENDERING.keys()))
     
@@ -151,7 +151,6 @@ with st.sidebar:
                 with st.spinner(f"Analisi specifica per genere {genere}..."):
                     txt = PDFSemanticPsychologyAnalyzer.extract_text_from_pdf(uploaded_pdf)
                     if txt:
-                        # Passiamo il genere al generatore di concetti
                         ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(txt, st.secrets["REPLICATE_API_TOKEN"], genere)
                         if ai_scene:
                             st.session_state['auto_desc'] = ai_scene
@@ -160,7 +159,6 @@ with st.sidebar:
 
     desc_it = st.text_area("3. Scena Visiva (IT):", value=st.session_state['auto_desc'])
     
-    # --- INTEGRAZIONE TASSATIVA TESTO ---
     if st.button("🪄 GENERA ARCHITETTURA"):
         if desc_it:
             with st.spinner("Compilazione prompt..."):
