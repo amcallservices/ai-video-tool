@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN (INVARIATO)
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v88.0 - Ironclad Typography", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v89.0 - Genre Authority", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -39,24 +39,8 @@ def reset_all():
     st.rerun()
 
 # ==============================================================================
-# 3. KNOWLEDGE BASE PSICOLOGICA E NARRATIVA (INVARIATO)
+# 3. KNOWLEDGE BASE NARRATIVA ADATTIVA
 # ==============================================================================
-COLOR_PSYCHOLOGY = """
-- ROSSO: Urgenza, Passione, Sopravvivenza.
-- BLU: Fiducia, Calma, Logica.
-- VERDE: Crescita, Equilibrio, Guarigione.
-- VIOLA: Mistero, Spiritualità.
-- GIALLO: Ottimismo, Attenzione.
-- NERO/GRIGIO: Autorità, Eleganza, Ignoto.
-- BIANCO: Purezza, Chiarezza.
-"""
-
-NARRATIVE_GUIDE = """
-- IDENTIFICA: Il protagonista o l'oggetto iconico centrale.
-- AMBIENTAZIONE: Il luogo fisico descritto con più intensità.
-- METAFORA VISIVA: Un elemento che riassume il conflitto del libro.
-"""
-
 class PDFSemanticPsychologyAnalyzer:
     @staticmethod
     def extract_text_from_pdf(pdf_file, max_pages=10):
@@ -73,14 +57,23 @@ class PDFSemanticPsychologyAnalyzer:
             return None
 
     @staticmethod
-    def generate_psychological_concept(text, api_token):
+    def generate_psychological_concept(text, api_token, genere_scelto):
         try:
             client = replicate.Client(api_token=api_token)
+            # L'LLM ora riceve il genere come contesto per adattare la scena
             system_prompt = f"""
-            Sei un esperto di analisi narrativa e Art Director editoriale. 
-            Il tuo compito è analizzare questo estratto e creare un 'Visual Concept' per la copertina che sia profondamente attinente alla storia.
-            ESTRATTO LIBRO: {text[:6000]}
-            REGOLE: Scrivi SOLO la scena visiva in 3 frasi in italiano (soggetto, sfondo, colori).
+            Sei un Art Director editoriale senior esperto in {genere_scelto}. 
+            Analizza l'estratto del libro e progetta una scena visiva per la copertina che sia TASSATIVAMENTE coerente con il genere '{genere_scelto}'.
+            
+            REGOLE PER GENERE:
+            - Se è Scientifico/Tecnico: focus su ordine, precisione, icone pulite.
+            - Se è Narrativo (Fantasy/Thriller): focus su atmosfera, tensione, personaggi.
+            - Se è Ricettario: focus su cibo, freschezza, texture appetitose.
+            - Se è Esoterico/Meditativo: focus su simbolismo, luce soffusa, colori spirituali.
+            
+            ESTRATTO: {text[:6000]}
+            
+            OUTPUT: Scrivi SOLO la scena visiva in 3 frasi in italiano.
             """
             output = client.run(
                 "meta/meta-llama-3-8b-instruct",
@@ -92,7 +85,7 @@ class PDFSemanticPsychologyAnalyzer:
             return None
 
 # ==============================================================================
-# 4. MATRICE DEGLI STILI (INVARIATO)
+# 4. MATRICE DEGLI STILI (DINAMICA AGGIORNATA)
 # ==============================================================================
 MODALITA_RENDERING = {
     "Fotorealistico": "photorealistic, 8k, highly detailed",
@@ -102,30 +95,34 @@ MODALITA_RENDERING = {
     "Vintage": "retro oil painting style, aged paper"
 }
 
+# NUOVE ATMOSFERE RICHIESTE CON DESCRITTORI TECNICI ADATTATI
 ATMOSFERE = {
-    "Saggio Scientifico": "clean academic layout",
-    "Quiz Scientifico": "dynamic educational layout",
-    "Manuale Tecnico": "technical schematic style",
-    "Business": "corporate luxury, gold accents",
-    "Romanzo Rosa": "dreamy lighting, soft pastel",
-    "Thriller": "noir suspense, high contrast",
-    "Fantasy": "epic magical atmosphere",
-    "Fantascienza": "cyberpunk tech, futuristic",
-    "Manuale Psicologico": "zen minimalist balance",
-    "Biografia": "classic biography, elegant portrait",
-    "Religioso/Teologico": "sacred divine atmosphere",
-    "Spirituale/Esoterico": "mystical vibes, occult symbols",
-    "Meditazione": "peaceful serenity, zen harmony"
+    "Saggio Scientifico": "authoritative academic layout, clean white space, mathematical or data precision",
+    "Quiz Scientifico": "engaging educational layout, dynamic colorful diagrams, vibrant and fun",
+    "Manuale Tecnico": "precise industrial schematic style, blueprint aesthetic, clean technical lines",
+    "Religioso/Teologico": "sacred atmosphere, divine light rays, solemn and majestic classical composition",
+    "Spirituale/Esoterico": "mystical vibes, occult symbols, ethereal fog, deep purple and gold palette",
+    "Meditazione / Mindfulness": "peaceful serenity, zen harmony, soft focus, airy natural elements",
+    "Business & Marketing": "modern corporate luxury, gold accents, sharp professional contrast, high-end branding",
+    "Romanzo Rosa": "dreamy lighting, bokeh effect, soft pastel tones, emotional and romantic",
+    "Thriller / Noir": "suspenseful noir, cinematic shadows, high contrast, dark and gritty mood",
+    "Fantasy": "epic magical atmosphere, mystical glowing elements, ornate legendary landscape",
+    "Fantascienza": "cyberpunk tech aesthetic, futuristic neon, space-age textures, sci-fi HUD",
+    "Manuale Psicologico": "balanced zen minimalist layout, calming watercolor textures, psychological harmony",
+    "Biografia": "classic biography portrait, elegant typography, timeless historical textures",
+    "Ricettario": "gourmet food photography style, bright appetizing colors, fresh ingredients in focus",
+    "Test Prep (Preparazione Esami)": "organized textbook style, academic focus icons, professional structured layout"
 }
 
 # ==============================================================================
-# 5. SIDEBAR: INTEGRAZIONE TASSATIVA TESTO (AGGIORNATO)
+# 5. SIDEBAR: PERSONALIZZAZIONE E ANALISI
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v88.0")
+    st.title("📕 DESIGNER v89.0")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
+    # Caricamento dinamico delle nuove atmosfere
     genere = st.selectbox("1. Atmosfera Editoriale:", list(ATMOSFERE.keys()))
     tipo_render = st.selectbox("2. Stile di Rendering:", list(MODALITA_RENDERING.keys()))
     
@@ -143,51 +140,49 @@ with st.sidebar:
 
     # Modulo PDF
     st.markdown('<div class="pdf-uploader-box">', unsafe_allow_html=True)
-    st.markdown("📄 **Analisi Narrativa & Psicologica**")
-    uploaded_pdf = st.file_uploader("Carica il tuo PDF:", type=["pdf"])
+    st.markdown(f"📄 **Analisi per {genere}**")
+    uploaded_pdf = st.file_uploader("Carica il PDF del libro:", type=["pdf"])
     
     if uploaded_pdf is not None:
         if st.button("🧠 Avvia Profilazione Narrativa"):
             if "REPLICATE_API_TOKEN" not in st.secrets:
                 st.error("Token mancante!")
             else:
-                with st.spinner("Analisi in corso..."):
+                with st.spinner(f"Analisi specifica per genere {genere}..."):
                     txt = PDFSemanticPsychologyAnalyzer.extract_text_from_pdf(uploaded_pdf)
                     if txt:
-                        ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(txt, st.secrets["REPLICATE_API_TOKEN"])
+                        # Passiamo il genere al generatore di concetti
+                        ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(txt, st.secrets["REPLICATE_API_TOKEN"], genere)
                         if ai_scene:
                             st.session_state['auto_desc'] = ai_scene
-                            st.success("Scena generata correttamente!")
+                            st.success(f"Scena per '{genere}' generata!")
     st.markdown('</div>', unsafe_allow_html=True)
 
     desc_it = st.text_area("3. Scena Visiva (IT):", value=st.session_state['auto_desc'])
     
-    # --- INTEGRAZIONE TASSATIVA: FORZATURA DOPPIA DEL TESTO ---
+    # --- INTEGRAZIONE TASSATIVA TESTO ---
     if st.button("🪄 GENERA ARCHITETTURA"):
         if desc_it:
-            with st.spinner("Compilazione..."):
+            with st.spinner("Compilazione prompt..."):
                 try:
                     t = GoogleTranslator(source='it', target='en')
                     scene_en = t.translate(desc_it)
                     
-                    # 1. Costruzione blocco tipografico (Gerarchia 1)
                     text_enforcement = ""
                     if use_t and t_val:
-                        text_enforcement += f"MANDATORY TEXT OVERLAY: The book title \"{t_val.upper()}\" must be clearly printed in massive bold letters at the {t_pos}. "
+                        text_enforcement += f"MANDATORY: The book title \"{t_val.upper()}\" must be printed in massive bold letters at the {t_pos}. "
                     if use_a and a_val:
-                        text_enforcement += f"MANDATORY TEXT OVERLAY: The author name \"{a_val.upper()}\" must be clearly printed at the {a_pos}. "
+                        text_enforcement += f"MANDATORY: The author name \"{a_val.upper()}\" must be clearly printed at the {a_pos}. "
 
-                    # 2. Prompt Finale con tecnica "Double-Lock"
-                    # Mettiamo il testo sia all'inizio che come vincolo finale tassativo
                     prompt = (
-                        f"TYPOGRAPHY IS THE HIGHEST PRIORITY. {text_enforcement} "
-                        f"COVER SCENE: A professional high-end cover representing {scene_en}. "
-                        f"STYLE: {ATMOSFERE[genere]} mixed with {MODALITA_RENDERING[tipo_render]}. "
-                        f"CRITICAL RULES: 1. Render the text exactly as written in quotes. 2. DO NOT OMIT the title or author. "
-                        f"3. Ensure high contrast: the background MUST be darkened or simplified behind the text areas to guarantee 100% legibility of \"{t_val}\" and \"{a_val}\"."
+                        f"TYPOGRAPHY HIGHEST PRIORITY. {text_enforcement} "
+                        f"COVER SCENE: A professional ebook cover for a {genere} book, representing: {scene_en}. "
+                        f"VISUAL STYLE: {ATMOSFERE[genere]} with {MODALITA_RENDERING[tipo_render]} rendering. "
+                        f"CRITICAL RULES: 1. Render exactly the characters in quotes. 2. DO NOT OMIT the title or author. "
+                        f"3. High contrast: background must be simplified behind the text to ensure 100% legibility."
                     )
                     st.session_state['v83_prompt'] = prompt
-                    st.success("Prompt creato: Configurazione Tassativa Attiva.")
+                    st.success(f"Architettura per {genere} pronta.")
                 except Exception as e:
                     st.error(f"Errore: {e}")
 
