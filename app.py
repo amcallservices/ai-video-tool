@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN (INVARIATO)
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v90.2 - Targeted Neuromarketing", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v90.1 - Targeted Neuromarketing", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -126,7 +126,7 @@ ATMOSFERE = {
     "Test Prep (Preparazione Esami)": "organized textbook style, academic focus icons, professional structured layout",
     "Romanzo Classico": "timeless literary aesthetic, elegant serif typography, historical or metaphorical atmosphere, oil painting or etched textures",
     "Narrativo": "balanced fiction layout, emotional narrative depth, contemporary commercial appeal, character-focused scenery",
-    "Contemporaneo": "modern contemporary aesthetic, trendy and sleek layout, relatable everyday elements, vivid and crisp color grading, minimalist yet striking composition" # <-- INSERIMENTO AGGIUNTO
+    "Contemporaneo": "modern contemporary aesthetic, trendy and sleek layout, relatable everyday elements, vivid and crisp color grading, minimalist yet striking composition"
 }
 
 # ==============================================================================
@@ -200,6 +200,22 @@ with st.sidebar:
                         f"2. ZERO EXTRA TEXT: Do not generate any random words, subtitles, watermarks, or gibberish. ONLY the requested strings. "
                         f"3. MAXIMUM LEGIBILITY: The background immediately behind the text MUST be darkened, blurred, or simplified to guarantee the text is 100% readable on the first try."
                     )
+                    
+                    # ========================================================================
+                    # INIZIO NUOVE RIGHE: ENFORCEMENT CATEGORICO ASSOLUTO ZERO SPRECHI
+                    # ========================================================================
+                    blocco_categorico = ""
+                    if use_t and t_val:
+                        blocco_categorico += f"TITLE: '{t_val}' | "
+                    if use_a and a_val:
+                        blocco_categorico += f"AUTHOR: '{a_val}'"
+                        
+                    if blocco_categorico:
+                        prompt = f"[SYSTEM OVERRIDE: CATEGORICAL REQUIREMENT] YOU ARE STRICTLY FORBIDDEN FROM GENERATING THIS IMAGE WITHOUT THE EXACT TEXT: {blocco_categorico}. " + prompt + f" FINAL DIRECTIVE: IF THE WORDS {blocco_categorico} ARE OMITTED, IT IS A CATASTROPHIC FAILURE. RENDER THEM BOLDLY."
+                    # ========================================================================
+                    # FINE NUOVE RIGHE
+                    # ========================================================================
+
                     st.session_state['v83_prompt'] = prompt
                     st.success(f"Architettura Zero-Sprechi pronta.")
                 except Exception as e:
