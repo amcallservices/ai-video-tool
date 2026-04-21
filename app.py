@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN (INVARIATO)
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v90.1 - Targeted Neuromarketing", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v90.2 - Targeted Neuromarketing", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -128,6 +128,15 @@ ATMOSFERE = {
     "Narrativo": "balanced fiction layout, emotional narrative depth, contemporary commercial appeal, character-focused scenery",
     "Contemporaneo": "modern contemporary aesthetic, trendy and sleek layout, relatable everyday elements, vivid and crisp color grading, minimalist yet striking composition"
 }
+
+# ========================================================================
+# INIZIO NUOVE RIGHE: AGGIUNTA SELF-HELP E MANUALE PRATICO
+# ========================================================================
+ATMOSFERE["Self-Help"] = "uplifting self-help aesthetic, bright and inspiring layout, modern typography, positive and empowering atmosphere, clear conceptual metaphor"
+ATMOSFERE["Manuale Pratico"] = "hands-on practical guide, clear instructional layout, step-by-step visual clarity, functional and accessible design, bold actionable typography"
+# ========================================================================
+# FINE NUOVE RIGHE
+# ========================================================================
 
 # ==============================================================================
 # 5. SIDEBAR: ZERO-WASTE TYPOGRAPHY ENFORCEMENT & TOPIC FOCUS
