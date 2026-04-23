@@ -4,3 +4,4 @@ requests
 deep-translator
 Pillow
 PyPDF2==3.0.1
+openai
