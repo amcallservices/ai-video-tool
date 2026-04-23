@@ -8,7 +8,7 @@ from deep_translator import GoogleTranslator
 # ==============================================================================
 # 1. CONFIGURAZIONE E DESIGN (INVARIATO)
 # ==============================================================================
-st.set_page_config(page_title="Ebook Designer v90.2 - Targeted Neuromarketing", page_icon="📕", layout="wide")
+st.set_page_config(page_title="Ebook Designer v90.4 - FLUX Edition", page_icon="📕", layout="wide")
 
 st.markdown("""
     <style>
@@ -39,7 +39,7 @@ def reset_all():
     st.rerun()
 
 # ==============================================================================
-# 3. KNOWLEDGE BASE: NEUROMARKETING E TRE CERVELLI (AGGIORNATO CON FOCUS)
+# 3. KNOWLEDGE BASE: NEUROMARKETING E TRE CERVELLI (INVARIATO)
 # ==============================================================================
 TRIUNE_BRAIN_THEORY = """
 REGOLE DI CONVERSIONE E NEUROMARKETING (I 3 CERVELLI):
@@ -66,9 +66,9 @@ class PDFSemanticPsychologyAnalyzer:
     @staticmethod
     def generate_psychological_concept(text, api_token, genere_scelto, argomento_focus=""):
         try:
-            client = replicate.Client(api_token=api_token)
+            from openai import OpenAI
+            client_oai = OpenAI(api_key=api_token)
             
-            # --- INTEGRAZIONE: LOGICA DEL FOCUS ARGOMENTO ---
             focus_istruzione = f"ARGOMENTO FOCUS RICHIESTO DALL'UTENTE: '{argomento_focus}'. L'intera metafora visiva DEVE ruotare attorno a questo tema specifico, integrandolo in modo fluido con il testo estratto dal PDF." if argomento_focus else "Estrai il tema principale unicamente dal testo del PDF."
 
             system_prompt = f"""
@@ -88,17 +88,20 @@ class PDFSemanticPsychologyAnalyzer:
             - L'atmosfera limbica (l'emozione/colori).
             - La composizione (logica/spazio per il testo).
             """
-            output = client.run(
-                "meta/meta-llama-3-8b-instruct",
-                input={"prompt": system_prompt, "max_tokens": 300, "temperature": 0.5} 
+            
+            resp = client_oai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": system_prompt}],
+                temperature=0.5,
+                max_tokens=300
             )
-            return "".join(output)
+            return resp.choices[0].message.content
         except Exception as e:
-            st.error(f"Errore Motore LLM: {e}")
+            st.error(f"Errore Motore OpenAI: {e}")
             return None
 
 # ==============================================================================
-# 4. MATRICE DEGLI STILI (DINAMICA AGGIORNATA CON CONTEMPORANEO)
+# 4. MATRICE DEGLI STILI (INVARIATO)
 # ==============================================================================
 MODALITA_RENDERING = {
     "Fotorealistico": "photorealistic, 8k, highly detailed",
@@ -126,23 +129,16 @@ ATMOSFERE = {
     "Test Prep (Preparazione Esami)": "organized textbook style, academic focus icons, professional structured layout",
     "Romanzo Classico": "timeless literary aesthetic, elegant serif typography, historical or metaphorical atmosphere, oil painting or etched textures",
     "Narrativo": "balanced fiction layout, emotional narrative depth, contemporary commercial appeal, character-focused scenery",
-    "Contemporaneo": "modern contemporary aesthetic, trendy and sleek layout, relatable everyday elements, vivid and crisp color grading, minimalist yet striking composition"
+    "Contemporaneo": "modern contemporary aesthetic, trendy and sleek layout, relatable everyday elements, vivid and crisp color grading, minimalist yet striking composition",
+    "Self-Help": "uplifting self-help aesthetic, bright and inspiring layout, modern typography, positive and empowering atmosphere, clear conceptual metaphor",
+    "Manuale Pratico": "hands-on practical guide, clear instructional layout, step-by-step visual clarity, functional and accessible design, bold actionable typography"
 }
 
-# ========================================================================
-# INIZIO NUOVE RIGHE: AGGIUNTA SELF-HELP E MANUALE PRATICO
-# ========================================================================
-ATMOSFERE["Self-Help"] = "uplifting self-help aesthetic, bright and inspiring layout, modern typography, positive and empowering atmosphere, clear conceptual metaphor"
-ATMOSFERE["Manuale Pratico"] = "hands-on practical guide, clear instructional layout, step-by-step visual clarity, functional and accessible design, bold actionable typography"
-# ========================================================================
-# FINE NUOVE RIGHE
-# ========================================================================
-
 # ==============================================================================
-# 5. SIDEBAR: ZERO-WASTE TYPOGRAPHY ENFORCEMENT & TOPIC FOCUS
+# 5. SIDEBAR: ESTRAZIONE SCENA SINGOLA E PROMPT ARCHITETTURA (AGGIORNATO)
 # ==============================================================================
 with st.sidebar:
-    st.title("📕 DESIGNER v90.2")
+    st.title("📕 DESIGNER v90.4")
     if st.button("🔄 RESET COMPLETO"): reset_all()
     
     st.divider()
@@ -161,32 +157,29 @@ with st.sidebar:
 
     st.divider()
 
-    # Modulo PDF Neuromarketing con Suggerimento Argomento
     st.markdown('<div class="pdf-uploader-box">', unsafe_allow_html=True)
     st.markdown(f"📄 **Profilazione Neuromarketing ({genere})**")
     
-    # --- INTEGRAZIONE: CAMPO DI TESTO PER L'ARGOMENTO FOCUS ---
     argomento_focus = st.text_input("🎯 Suggerisci Argomento (Opzionale):", placeholder="Es. Rivincita personale, Lotta di classe...")
     uploaded_pdf = st.file_uploader("Carica il PDF del libro:", type=["pdf"])
     
     if uploaded_pdf is not None:
         if st.button("🧠 Estrai Scena di Conversione"):
-            if "REPLICATE_API_TOKEN" not in st.secrets:
-                st.error("Token mancante!")
+            if "OPENAI_API_KEY" not in st.secrets:
+                st.error("Chiave OPENAI_API_KEY mancante nei secrets!")
             else:
-                with st.spinner(f"Analisi dei Tre Cervelli in corso..."):
+                with st.spinner("Analisi dei Tre Cervelli con GPT-4o-mini in corso..."):
                     txt = PDFSemanticPsychologyAnalyzer.extract_text_from_pdf(uploaded_pdf)
                     if txt:
-                        # Passiamo anche l'argomento_focus alla funzione
-                        ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(txt, st.secrets["REPLICATE_API_TOKEN"], genere, argomento_focus)
+                        ai_scene = PDFSemanticPsychologyAnalyzer.generate_psychological_concept(txt, st.secrets["OPENAI_API_KEY"], genere, argomento_focus)
                         if ai_scene:
                             st.session_state['auto_desc'] = ai_scene
-                            st.success(f"Scena ottimizzata per le vendite generata!")
+                            st.success("Scena ottimizzata per le vendite generata!")
+
     st.markdown('</div>', unsafe_allow_html=True)
 
     desc_it = st.text_area("3. Scena Visiva (IT):", value=st.session_state['auto_desc'])
     
-    # --- GABBIA DI FERRO PER LA TIPOGRAFIA (INVARIATO) ---
     if st.button("🪄 GENERA ARCHITETTURA"):
         if desc_it:
             with st.spinner("Compilazione prompt..."):
@@ -194,44 +187,47 @@ with st.sidebar:
                     t = GoogleTranslator(source='it', target='en')
                     scene_en = t.translate(desc_it)
                     
-                    text_enforcement = ""
-                    if use_t and t_val:
-                        text_enforcement += f"MANDATORY TITLE: The exact text \"{t_val.upper()}\" MUST be flawlessly printed in massive, highly legible font at the {t_pos}. "
-                    if use_a and a_val:
-                        text_enforcement += f"MANDATORY AUTHOR: The exact text \"{a_val.upper()}\" MUST be flawlessly printed at the {a_pos}. "
-
-                    prompt = (
-                        f"TYPOGRAPHY IS THE ABSOLUTE PRIORITY. {text_enforcement} "
-                        f"VISUAL HOOK: A highly engaging, neuromarketing-optimized ebook cover representing: {scene_en}. "
-                        f"STYLE DIRECTION: {ATMOSFERE[genere]} rendered in {MODALITA_RENDERING[tipo_render]}. "
-                        f"CRITICAL ANTI-HALLUCINATION RULES: "
-                        f"1. You MUST print the EXACT characters inside the quotes. "
-                        f"2. ZERO EXTRA TEXT: Do not generate any random words, subtitles, watermarks, or gibberish. ONLY the requested strings. "
-                        f"3. MAXIMUM LEGIBILITY: The background immediately behind the text MUST be darkened, blurred, or simplified to guarantee the text is 100% readable on the first try."
-                    )
-                    
-                    # ========================================================================
-                    # INIZIO NUOVE RIGHE: ENFORCEMENT CATEGORICO ASSOLUTO ZERO SPRECHI
-                    # ========================================================================
+                    text_instructions = []
                     blocco_categorico = ""
+                    
                     if use_t and t_val:
+                        # AGGIUNTA: Richiesta esplicita per il controllo di ogni singolo carattere
+                        text_instructions.append(f'the exact text "{t_val}" (ensure every single character is rendered flawlessly) prominently and clearly written at the {t_pos}')
                         blocco_categorico += f"TITLE: '{t_val}' | "
                     if use_a and a_val:
+                        # AGGIUNTA: Richiesta esplicita per il controllo di ogni singolo carattere
+                        text_instructions.append(f'the exact author name "{a_val}" (verify every single letter is correct) written at the {a_pos}')
                         blocco_categorico += f"AUTHOR: '{a_val}'"
                         
+                    if text_instructions:
+                        text_part = " and ".join(text_instructions)
+                        prompt_typography = f"A highly professional book cover featuring {text_part}. The background art shows "
+                    else:
+                        prompt_typography = "A highly professional textless book cover showing "
+
+                    prompt = (
+                        f"{prompt_typography}"
+                        f"{scene_en}. "
+                        f"MANDATORY FOREGROUND RULE: The main subject or primary element beneath the massive title MUST be positioned in the absolute foreground (close-up or prominent focus), completely dominating the visual space beneath the text. "
+                        f"Style Direction: {ATMOSFERE[genere]} rendered in {MODALITA_RENDERING[tipo_render]}."
+                        f"\n\nLEGIBILITY RULE: The background immediately behind the text MUST be darkened, blurred, or simplified to guarantee the text is 100% readable."
+                    )
+                    
                     if blocco_categorico:
-                        prompt = f"[SYSTEM OVERRIDE: CATEGORICAL REQUIREMENT] YOU ARE STRICTLY FORBIDDEN FROM GENERATING THIS IMAGE WITHOUT THE EXACT TEXT: {blocco_categorico}. " + prompt + f" FINAL DIRECTIVE: IF THE WORDS {blocco_categorico} ARE OMITTED, IT IS A CATASTROPHIC FAILURE. RENDER THEM BOLDLY."
-                    # ========================================================================
-                    # FINE NUOVE RIGHE
-                    # ========================================================================
+                        # AGGIUNTA: Rinforzo categorico che ordina al generatore di rispettare ogni singolo carattere
+                        prompt += (
+                            f" CATEGORICAL DIRECTIVE: You MUST correctly write EVERY SINGLE CHARACTER of the text \"{blocco_categorico.replace('|','and')}\". "
+                            f"Verify the spelling letter by letter. Do not miss, alter, or add a single letter. "
+                            f"No other words, signatures, or random AI gibberish anywhere on the cover."
+                        )
 
                     st.session_state['v83_prompt'] = prompt
-                    st.success(f"Architettura Zero-Sprechi pronta.")
+                    st.success("Architettura con Tipografia Pronta.")
                 except Exception as e:
                     st.error(f"Errore: {e}")
 
 # ==============================================================================
-# 6. WORKSTATION GENERAZIONE (INVARIATO)
+# 6. WORKSTATION GENERAZIONE (FLUX SCHNELL TRAMITE REPLICATE)
 # ==============================================================================
 st.title("🎨 Custom Creative Workstation")
 col_l, col_r = st.columns([1.2, 1])
@@ -241,25 +237,44 @@ with col_l:
     
     if st.button("🔥 GENERA COPERTINA HD"):
         if not p_edit:
-            st.error("Configura prima la sidebar!")
+            st.error("Configura prima la sidebar e compila l'architettura!")
+        elif "REPLICATE_API_TOKEN" not in st.secrets:
+            st.error("Manca la REPLICATE_API_TOKEN nei secrets di Streamlit!")
         else:
-            client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
             try:
-                with st.spinner("Generazione Master in corso..."):
-                    out = client.run(
-                        "black-forest-labs/flux-1.1-pro",
-                        input={"prompt": p_edit, "aspect_ratio": "2:3", "output_format": "jpg", "output_quality": 100}
+                client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
+                with st.spinner("Generazione Master in corso (FLUX Schnell)..."):
+                    output = client.run(
+                        "black-forest-labs/flux-schnell",
+                        input={
+                            "prompt": p_edit,
+                            "aspect_ratio": "2:3",
+                            "output_format": "jpg",
+                            "output_quality": 100
+                        }
                     )
-                    st.session_state['v83_res'] = str(out)
+                    
+                    # Estrazione sicura dell'URL dalla risposta Replicate
+                    if isinstance(output, list) and len(output) > 0:
+                        image_url = str(output[0])
+                    else:
+                        image_url = str(output)
+                        
+                    st.session_state['v83_res'] = image_url
                     st.balloons()
             except Exception as e:
-                st.error(f"Errore tecnico: {e}")
+                st.error(f"Errore tecnico Replicate: {e}")
 
 with col_r:
     if st.session_state['v83_res']:
+        # Mostra l'immagine convertita in URL in modo sicuro
         st.image(st.session_state['v83_res'], use_container_width=True)
         st.divider()
-        response = requests.get(st.session_state['v83_res'])
-        st.download_button(label="📥 Scarica Copertina", data=response.content, file_name="cover.jpg", mime="image/jpeg")
+        try:
+            # Scarica il file per il download
+            response = requests.get(st.session_state['v83_res'])
+            st.download_button(label="📥 Scarica Copertina", data=response.content, file_name="book_cover_flux.jpg", mime="image/jpeg")
+        except Exception as e:
+            st.error("Errore durante il download dell'immagine.")
     else:
         st.info("Configura e genera per visualizzare l'anteprima.")
