@@ -57,7 +57,14 @@ class PDFSemanticPsychologyAnalyzer:
             limit = min(max_pages, len(reader.pages))
             for i in range(limit):
                 page = reader.pages[i]
-                text_content += page.extract_text() + " "
+                extracted = page.extract_text()
+                if extracted:
+                    text_content += extracted + " "
+            
+            # --- RISOLUZIONE ERRORE SURROGATI ---
+            # Pulisce il testo da caratteri corrotti o emoji non supportate dal PDF
+            text_content = text_content.encode('utf-8', 'ignore').decode('utf-8')
+            
             return text_content
         except Exception as e:
             st.error(f"Errore nella lettura del PDF: {e}")
@@ -135,7 +142,7 @@ ATMOSFERE = {
 }
 
 # ==============================================================================
-# 5. SIDEBAR: ESTRAZIONE SCENA SINGOLA E PROMPT ARCHITETTURA (AGGIORNATO)
+# 5. SIDEBAR: ESTRAZIONE SCENA SINGOLA E PROMPT ARCHITETTURA (INVARIATO)
 # ==============================================================================
 with st.sidebar:
     st.title("📕 DESIGNER v90.4")
@@ -221,7 +228,6 @@ with st.sidebar:
                     )
                     
                     if blocco_categorico:
-                        # RIGHE AGGIUNTE E POTENZIATE: Focus categorico su caratteri, punteggiatura e divieto testi extra
                         prompt += (
                             f" CATEGORICAL DIRECTIVE: You MUST correctly write EVERY SINGLE CHARACTER and PUNCTUATION MARK of the text \"{blocco_categorico.replace('|','and')}\". "
                             f"Pay extreme attention to spelling, verify it letter-by-letter. Do not miss, alter, or add a single letter. "
@@ -260,10 +266,9 @@ with col_l:
                             "aspect_ratio": "2:3",
                             "output_format": "jpg",
                             "output_quality": 100,
-                            # RIGHE AGGIUNTE/MODIFICATE: Aumento dei passaggi per elaborazione molto più lenta e precisa
-                            "num_inference_steps": 50,  # Aumentato a 50: il modello dedica più tempo per rifinire lettere e dettagli
-                            "guidance": 4.5,            # Aumentato a 4.5: forza il modello ad aderire rigorosamente al prompt evitando variazioni casuali
-                            "prompt_upsampling": False  # Evita che l'IA modifichi o inventi testi non richiesti
+                            "num_inference_steps": 50,  
+                            "guidance": 4.5,            
+                            "prompt_upsampling": False  
                         }
                     )
                     
