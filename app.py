@@ -135,7 +135,7 @@ ATMOSFERE = {
 }
 
 # ==============================================================================
-# 5. SIDEBAR: ESTRAZIONE SCENA SINGOLA E PROMPT ARCHITETTURA (INVARIATO)
+# 5. SIDEBAR: ESTRAZIONE SCENA SINGOLA E PROMPT ARCHITETTURA (AGGIORNATO)
 # ==============================================================================
 with st.sidebar:
     st.title("📕 DESIGNER v90.4")
@@ -221,12 +221,13 @@ with st.sidebar:
                     )
                     
                     if blocco_categorico:
+                        # RIGHE AGGIUNTE E POTENZIATE: Focus categorico su caratteri, punteggiatura e divieto testi extra
                         prompt += (
-                            f" CATEGORICAL DIRECTIVE: You MUST correctly write EVERY SINGLE CHARACTER of the text \"{blocco_categorico.replace('|','and')}\". "
-                            f"Verify the spelling letter by letter. Do not miss, alter, or add a single letter. "
-                            f"CRITICAL ANTI-REPETITION RULE: You must print the title EXACTLY ONCE and the author EXACTLY ONCE. "
+                            f" CATEGORICAL DIRECTIVE: You MUST correctly write EVERY SINGLE CHARACTER and PUNCTUATION MARK of the text \"{blocco_categorico.replace('|','and')}\". "
+                            f"Pay extreme attention to spelling, verify it letter-by-letter. Do not miss, alter, or add a single letter. "
+                            f"CRITICAL ANTI-REPETITION RULE: You must print each requested text EXACTLY ONCE. "
                             f"DO NOT repeat, duplicate, mirror, or echo the text anywhere else on the canvas. "
-                            f"No other words, signatures, or random AI gibberish anywhere on the cover."
+                            f"ABSOLUTELY NO EXTRA TEXT: Do not insert any other words, signatures, symbols, or random AI gibberish anywhere on the cover. ONLY the requested text is allowed."
                         )
 
                     st.session_state['v83_prompt'] = prompt
@@ -251,19 +252,18 @@ with col_l:
         else:
             try:
                 client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-                with st.spinner("Elaborazione Lenta in corso (FLUX Dev)..."):
+                with st.spinner("Elaborazione Lenta e Precisa in corso (FLUX Dev)..."):
                     output = client.run(
-                        # SOSTITUITO "flux-schnell" CON "flux-dev" PER POTERLO RALLENTARE
                         "black-forest-labs/flux-dev",
                         input={
                             "prompt": p_edit,
                             "aspect_ratio": "2:3",
                             "output_format": "jpg",
                             "output_quality": 100,
-                            # AGGIUNTE RIGHE: Impostazioni rigorose per un'elaborazione lenta, senza errori e aderente al prompt
-                            "num_inference_steps": 35,  # Molti più passaggi (più lento) = precisione testuale infallibile
-                            "guidance": 3.5,            # Forza l'IA a seguire il prompt in modo categorico
-                            "prompt_upsampling": False  # Impedisce all'IA di "migliorare" o modificare a caso le tue parole
+                            # RIGHE AGGIUNTE/MODIFICATE: Aumento dei passaggi per elaborazione molto più lenta e precisa
+                            "num_inference_steps": 50,  # Aumentato a 50: il modello dedica più tempo per rifinire lettere e dettagli
+                            "guidance": 4.5,            # Aumentato a 4.5: forza il modello ad aderire rigorosamente al prompt evitando variazioni casuali
+                            "prompt_upsampling": False  # Evita che l'IA modifichi o inventi testi non richiesti
                         }
                     )
                     
