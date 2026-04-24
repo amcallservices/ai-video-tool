@@ -151,6 +151,11 @@ with st.sidebar:
     t_val = st.text_input("Testo Titolo:", "TITOLO ESEMPIO") if use_t else ""
     t_pos = st.selectbox("Posizione Titolo:", ["top", "center", "bottom"]) if use_t else ""
 
+    # AGGIUNTA: Sezione per il Sottotitolo / Scritta Aggiuntiva
+    use_sub = st.checkbox("Abilita Scritta Aggiuntiva / Sottotitolo", value=False)
+    sub_val = st.text_input("Testo Aggiuntivo:", "SOTTOTITOLO ESEMPIO") if use_sub else ""
+    sub_pos = st.selectbox("Posizione Scritta Aggiuntiva:", ["top", "center", "bottom"], index=1) if use_sub else ""
+
     use_a = st.checkbox("Abilita Inserimento Autore", value=True)
     a_val = st.text_input("Nome Autore:", "AUTORE ESEMPIO") if use_a else ""
     a_pos = st.selectbox("Posizione Autore:", ["top", "center", "bottom"], index=2) if use_a else ""
@@ -191,11 +196,15 @@ with st.sidebar:
                     blocco_categorico = ""
                     
                     if use_t and t_val:
-                        # AGGIUNTA: Richiesta esplicita per il controllo di ogni singolo carattere
                         text_instructions.append(f'the exact text "{t_val}" (ensure every single character is rendered flawlessly) prominently and clearly written at the {t_pos}')
                         blocco_categorico += f"TITLE: '{t_val}' | "
+                    
+                    # AGGIUNTA: Integrazione del Sottotitolo nel prompt
+                    if use_sub and sub_val:
+                        text_instructions.append(f'the exact text "{sub_val}" (verify every single letter is correct) clearly written at the {sub_pos}')
+                        blocco_categorico += f"SUBTITLE: '{sub_val}' | "
+                        
                     if use_a and a_val:
-                        # AGGIUNTA: Richiesta esplicita per il controllo di ogni singolo carattere
                         text_instructions.append(f'the exact author name "{a_val}" (verify every single letter is correct) written at the {a_pos}')
                         blocco_categorico += f"AUTHOR: '{a_val}'"
                         
@@ -214,7 +223,6 @@ with st.sidebar:
                     )
                     
                     if blocco_categorico:
-                        # AGGIUNTA: Rinforzo categorico per la correttezza e ANTI-RIPETIZIONE
                         prompt += (
                             f" CATEGORICAL DIRECTIVE: You MUST correctly write EVERY SINGLE CHARACTER of the text \"{blocco_categorico.replace('|','and')}\". "
                             f"Verify the spelling letter by letter. Do not miss, alter, or add a single letter. "
