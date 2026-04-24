@@ -135,7 +135,7 @@ ATMOSFERE = {
 }
 
 # ==============================================================================
-# 5. SIDEBAR: ESTRAZIONE SCENA SINGOLA E PROMPT ARCHITETTURA (AGGIORNATO)
+# 5. SIDEBAR: ESTRAZIONE SCENA SINGOLA E PROMPT ARCHITETTURA (INVARIATO)
 # ==============================================================================
 with st.sidebar:
     st.title("📕 DESIGNER v90.4")
@@ -151,7 +151,6 @@ with st.sidebar:
     t_val = st.text_input("Testo Titolo:", "TITOLO ESEMPIO") if use_t else ""
     t_pos = st.selectbox("Posizione Titolo:", ["top", "center", "bottom"]) if use_t else ""
 
-    # AGGIUNTA: Sezione per il Sottotitolo / Scritta Aggiuntiva
     use_sub = st.checkbox("Abilita Scritta Aggiuntiva / Sottotitolo", value=False)
     sub_val = st.text_input("Testo Aggiuntivo:", "SOTTOTITOLO ESEMPIO") if use_sub else ""
     sub_pos = st.selectbox("Posizione Scritta Aggiuntiva:", ["top", "center", "bottom"], index=1) if use_sub else ""
@@ -199,7 +198,6 @@ with st.sidebar:
                         text_instructions.append(f'the exact text "{t_val}" (ensure every single character is rendered flawlessly) prominently and clearly written at the {t_pos}')
                         blocco_categorico += f"TITLE: '{t_val}' | "
                     
-                    # AGGIUNTA: Integrazione del Sottotitolo nel prompt
                     if use_sub and sub_val:
                         text_instructions.append(f'the exact text "{sub_val}" (verify every single letter is correct) clearly written at the {sub_pos}')
                         blocco_categorico += f"SUBTITLE: '{sub_val}' | "
@@ -237,7 +235,7 @@ with st.sidebar:
                     st.error(f"Errore: {e}")
 
 # ==============================================================================
-# 6. WORKSTATION GENERAZIONE (FLUX SCHNELL TRAMITE REPLICATE)
+# 6. WORKSTATION GENERAZIONE (FLUX DEV - ELABORAZIONE LENTA E PRECISA)
 # ==============================================================================
 st.title("🎨 Custom Creative Workstation")
 col_l, col_r = st.columns([1.2, 1])
@@ -253,18 +251,22 @@ with col_l:
         else:
             try:
                 client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-                with st.spinner("Generazione Master in corso (FLUX Schnell)..."):
+                with st.spinner("Elaborazione Lenta in corso (FLUX Dev)..."):
                     output = client.run(
-                        "black-forest-labs/flux-schnell",
+                        # SOSTITUITO "flux-schnell" CON "flux-dev" PER POTERLO RALLENTARE
+                        "black-forest-labs/flux-dev",
                         input={
                             "prompt": p_edit,
                             "aspect_ratio": "2:3",
                             "output_format": "jpg",
-                            "output_quality": 100
+                            "output_quality": 100,
+                            # AGGIUNTE RIGHE: Impostazioni rigorose per un'elaborazione lenta, senza errori e aderente al prompt
+                            "num_inference_steps": 35,  # Molti più passaggi (più lento) = precisione testuale infallibile
+                            "guidance": 3.5,            # Forza l'IA a seguire il prompt in modo categorico
+                            "prompt_upsampling": False  # Impedisce all'IA di "migliorare" o modificare a caso le tue parole
                         }
                     )
                     
-                    # Estrazione sicura dell'URL dalla risposta Replicate
                     if isinstance(output, list) and len(output) > 0:
                         image_url = str(output[0])
                     else:
@@ -277,11 +279,9 @@ with col_l:
 
 with col_r:
     if st.session_state['v83_res']:
-        # Mostra l'immagine convertita in URL in modo sicuro
         st.image(st.session_state['v83_res'], use_container_width=True)
         st.divider()
         try:
-            # Scarica il file per il download
             response = requests.get(st.session_state['v83_res'])
             st.download_button(label="📥 Scarica Copertina", data=response.content, file_name="book_cover_flux.jpg", mime="image/jpeg")
         except Exception as e:
