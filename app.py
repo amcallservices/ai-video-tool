@@ -62,7 +62,6 @@ class PDFSemanticPsychologyAnalyzer:
                     text_content += extracted + " "
             
             # --- RISOLUZIONE ERRORE SURROGATI ---
-            # Pulisce il testo da caratteri corrotti o emoji non supportate dal PDF
             text_content = text_content.encode('utf-8', 'ignore').decode('utf-8')
             
             return text_content
@@ -258,7 +257,8 @@ with col_l:
         else:
             try:
                 client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-                with st.spinner("Elaborazione Lenta e Precisa in corso (FLUX Dev)..."):
+                # Aggiornato il testo dello spinner per far capire che l'IA prenderà tempo
+                with st.spinner("Elaborazione Lenta e Architetturale in corso (FLUX Dev ai massimi passaggi)..."):
                     output = client.run(
                         "black-forest-labs/flux-dev",
                         input={
@@ -266,9 +266,10 @@ with col_l:
                             "aspect_ratio": "2:3",
                             "output_format": "jpg",
                             "output_quality": 100,
-                            "num_inference_steps": 50,  
-                            "guidance": 4.5,            
-                            "prompt_upsampling": False  
+                            # --- RIGHE AGGIUNTE PER MASSIMA LENTEZZA E PERFEZIONE TESTUALE ---
+                            "num_inference_steps": 100,  # Aumentato a 100: forza il sistema a scansionare i dettagli al massimo livello
+                            "guidance": 5.0,             # Stretto controllo: ignora le allucinazioni e si attacca rigidamente alle parole del prompt
+                            "prompt_upsampling": False   # Vieta al modello di reinterpretare e rovinare le scritte
                         }
                     )
                     
