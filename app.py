@@ -62,7 +62,6 @@ class PDFSemanticPsychologyAnalyzer:
                     text_content += extracted + " "
             
             # --- RISOLUZIONE ERRORE SURROGATI ---
-            # Pulisce il testo da caratteri corrotti o emoji non supportate dal PDF
             text_content = text_content.encode('utf-8', 'ignore').decode('utf-8')
             
             return text_content
@@ -108,7 +107,7 @@ class PDFSemanticPsychologyAnalyzer:
             return None
 
 # ==============================================================================
-# 4. MATRICE DEGLI STILI (INVARIATO)
+# 4. MATRICE DEGLI STILI (AGGIUNTO ECONOMIA E FINANZA)
 # ==============================================================================
 MODALITA_RENDERING = {
     "Fotorealistico": "photorealistic, 8k, highly detailed",
@@ -138,7 +137,9 @@ ATMOSFERE = {
     "Narrativo": "balanced fiction layout, emotional narrative depth, contemporary commercial appeal, character-focused scenery",
     "Contemporaneo": "modern contemporary aesthetic, trendy and sleek layout, relatable everyday elements, vivid and crisp color grading, minimalist yet striking composition",
     "Self-Help": "uplifting self-help aesthetic, bright and inspiring layout, modern typography, positive and empowering atmosphere, clear conceptual metaphor",
-    "Manuale Pratico": "hands-on practical guide, clear instructional layout, step-by-step visual clarity, functional and accessible design, bold actionable typography"
+    "Manuale Pratico": "hands-on practical guide, clear instructional layout, step-by-step visual clarity, functional and accessible design, bold actionable typography",
+    # --- RIGA AGGIUNTA COME RICHIESTO ---
+    "Economia e Finanza": "professional financial layout, modern economic aesthetic, corporate sharp contrast, trustworthy and wealthy atmosphere, subtle geometric or data patterns"
 }
 
 # ==============================================================================
@@ -258,7 +259,6 @@ with col_l:
         else:
             try:
                 client = replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
-                # Aggiornato il testo dello spinner per riflettere il limite massimo
                 with st.spinner("Elaborazione Lenta e Architetturale in corso (FLUX Dev ai massimi passaggi consentiti)..."):
                     output = client.run(
                         "black-forest-labs/flux-dev",
@@ -267,10 +267,9 @@ with col_l:
                             "aspect_ratio": "2:3",
                             "output_format": "jpg",
                             "output_quality": 100,
-                            # --- CORREZIONE ERRORE REPLICATE API ---
-                            "num_inference_steps": 50,   # Fissato al MASSIMO assoluto consentito dai server Replicate
-                            "guidance": 5.0,             # Stretto controllo: ignora le allucinazioni e si attacca rigidamente alle parole del prompt
-                            "prompt_upsampling": False   # Vieta al modello di reinterpretare e rovinare le scritte
+                            "num_inference_steps": 50,   
+                            "guidance": 5.0,             
+                            "prompt_upsampling": False   
                         }
                     )
                     
