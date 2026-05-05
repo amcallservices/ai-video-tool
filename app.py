@@ -107,7 +107,7 @@ class PDFSemanticPsychologyAnalyzer:
             return None
 
 # ==============================================================================
-# 4. MATRICE DEGLI STILI (AGGIUNTO ECONOMIA E FINANZA)
+# 4. MATRICE DEGLI STILI (AGGIUNTO GENERE STORICO)
 # ==============================================================================
 MODALITA_RENDERING = {
     "Fotorealistico": "photorealistic, 8k, highly detailed",
@@ -138,8 +138,9 @@ ATMOSFERE = {
     "Contemporaneo": "modern contemporary aesthetic, trendy and sleek layout, relatable everyday elements, vivid and crisp color grading, minimalist yet striking composition",
     "Self-Help": "uplifting self-help aesthetic, bright and inspiring layout, modern typography, positive and empowering atmosphere, clear conceptual metaphor",
     "Manuale Pratico": "hands-on practical guide, clear instructional layout, step-by-step visual clarity, functional and accessible design, bold actionable typography",
+    "Economia e Finanza": "professional financial layout, modern economic aesthetic, corporate sharp contrast, trustworthy and wealthy atmosphere, subtle geometric or data patterns",
     # --- RIGA AGGIUNTA COME RICHIESTO ---
-    "Economia e Finanza": "professional financial layout, modern economic aesthetic, corporate sharp contrast, trustworthy and wealthy atmosphere, subtle geometric or data patterns"
+    "Storico": "authentic historical aesthetic, period-accurate details, classic elegant typography, vintage atmospheric lighting, epic and timeless composition"
 }
 
 # ==============================================================================
